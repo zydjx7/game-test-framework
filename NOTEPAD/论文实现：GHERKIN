@@ -1,0 +1,146 @@
+好的，我将为你规划一个围绕“基于LLM自动生成Gherkin测试用例并接入游戏测试框架”的研究实施方案。这将包括论文整体结构设计、实现路径、关键技术点、阶段性目标等，特别聚焦在将GPT-4生成的Gherkin自然语言测试场景与RiverGame测试框架集成，并分析其在测试效率与准确性上的表现。
+
+我会尽快整理好详细建议方案供你参考，稍后就来向你汇报。
+
+# 基于LLM生成的Gherkin测试用例与游戏测试框架的集成研究实施方案
+
+## 研究目标
+
+本研究的主要目标是在游戏自动化测试领域引入大型语言模型（LLM，例如OpenAI GPT-4），探索其是否能够提高测试用例编写效率和测试准确性。具体而言，我们将围绕以下几个问题展开：
+
+- **自动生成测试场景的可行性**：验证GPT-4这类LLM能否根据自然语言的需求描述自动生成格式正确、语义合理的Gherkin测试用例场景，并与现有BDD测试框架集成运行。我们希望证明，LLM可以充当QA的助手，从**用户故事或测试需求**中快速产出对应的`Given-When-Then`场景描述 ([利用 ChatGPT 进行软件测试 | HackerNoon](https://hackernoon.com/lang/zh/%E5%88%A9%E7%94%A8-chatgpt-%E8%BF%9B%E8%A1%8C%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95#:~:text=%E6%A0%B9%E6%8D%AE%20BDD%20%E6%8C%87%E5%8D%97%EF%BC%8C%E4%B8%8A%E8%BF%B0%E8%A1%8C%E4%B8%BA%E5%8F%AF%E4%BB%A5%E7%BC%96%E5%86%99%E4%B8%BA%20Gherkin%20%E8%AF%AD%E6%B3%95%2F%E6%AD%A5%E9%AA%A4%EF%BC%8C%E8%BF%99%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%83%BD%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%8C%E5%B9%B6%E4%B8%94%E4%BD%BF%E7%94%A8,%E7%9A%84%E5%BC%BA%E5%A4%A7%E5%8A%9F%E8%83%BD%E6%9D%A5%E6%90%85%E5%8A%A8%20Gherkin%20%E6%AD%A5%E9%AA%A4%E5%8F%8A%E5%85%B6%E8%87%AA%E5%8A%A8%E5%8C%96%E5%9C%A8%20Cucumber%20%E6%A1%86%E6%9E%B6%E4%B8%8A%E9%80%9F%E5%BA%A6%E6%9B%B4%E5%BF%AB%E3%80%82))。
+- **效率提升与负担降低**：衡量与人工手写测试脚本相比，使用LLM生成测试规范是否能**显著减少**QA人员编写测试用例的时间和工作量。预期结论是，GPT-4能够在短时间内生成大量覆盖各种情景的测试案例，从而提高测试覆盖率并减少人为遗漏 ([利用 ChatGPT 进行软件测试 | HackerNoon](https://hackernoon.com/lang/zh/%E5%88%A9%E7%94%A8-chatgpt-%E8%BF%9B%E8%A1%8C%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95#:~:text=%E6%A0%B9%E6%8D%AE%20BDD%20%E6%8C%87%E5%8D%97%EF%BC%8C%E4%B8%8A%E8%BF%B0%E8%A1%8C%E4%B8%BA%E5%8F%AF%E4%BB%A5%E7%BC%96%E5%86%99%E4%B8%BA%20Gherkin%20%E8%AF%AD%E6%B3%95%2F%E6%AD%A5%E9%AA%A4%EF%BC%8C%E8%BF%99%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%83%BD%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%8C%E5%B9%B6%E4%B8%94%E4%BD%BF%E7%94%A8,%E7%9A%84%E5%BC%BA%E5%A4%A7%E5%8A%9F%E8%83%BD%E6%9D%A5%E6%90%85%E5%8A%A8%20Gherkin%20%E6%AD%A5%E9%AA%A4%E5%8F%8A%E5%85%B6%E8%87%AA%E5%8A%A8%E5%8C%96%E5%9C%A8%20Cucumber%20%E6%A1%86%E6%9E%B6%E4%B8%8A%E9%80%9F%E5%BA%A6%E6%9B%B4%E5%BF%AB%E3%80%82))。
+- **准确性与可执行性**：评估LLM生成的测试用例在**准确性**（对游戏规则和预期行为的描述是否正确）以及**执行成功率**（生成的场景能否在RiverGame框架中顺利运行）方面是否达到与人工编写测试用例相当的水平。我们希望验证LLM生成的Gherkin场景在不经过或仅经过少量修改的情况下即可直接执行，通过测试框架获得**通过/失败**结果 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=Let%E2%80%99s%20construct%20BDD%20scenarios%20using,the%20need%20for%20additional%20modifications))。
+
+归纳而言，本论文旨在**证明和量化**：在RiverGame游戏测试框架下，集成GPT-4自动生成Gherkin测试用例的方案，是否能够**提高游戏自动测试的效率**（更快生成更多测试场景）以及**保持或提高测试准确性**（测试场景正确且可运行），从而减轻QA手工编写测试脚本的负担。
+
+## 研究方法与实施路径
+
+为实现上述目标，我们将采用如下研究方法和实施步骤：
+
+- **技术选型**：选择OpenAI最新的GPT-4模型作为LLM生成器。GPT-4具备强大的自然语言理解和生成能力，能够按照指令生成结构化文本（如Gherkin格式）并保持上下文一致性。相较于早期模型，GPT-4在遵循格式和复杂指令方面更可靠，这对于生成严格语法要求的测试场景尤为重要。通过OpenAI提供的API接口调用GPT-4，以编程方式将测试需求输入模型并获得输出结果。
+
+- **Gherkin语句生成**：制定合理的提示（Prompt）策略，引导GPT-4根据**游戏的测试需求**生成BDD场景描述。具体方法是：首先从游戏设计文档或测试需求中提炼用户故事（user story）或测试意图，以自然语言形式描述。在提示中明确要求模型以Gherkin语法输出。例如，可以提供模板：“请根据以下用户故事生成Gherkin场景：...”。为了确保生成的步骤可执行，我们将提供**预定义的步骤库**给GPT-4参考 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=The%20prompt%20to%20generate%20BDD,scenarios))。RiverGame框架已有一系列步骤定义（Step Definitions），我们会将这些步骤**句式**列出，如“`Given ...`”，“`When ...`”，“`Then ...`”等可能的操作和断言，并在提示中强调**只能使用这些给定的步骤句式**来构造场景 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=Let%E2%80%99s%20construct%20BDD%20scenarios%20using,the%20need%20for%20additional%20modifications)) ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=The%20prompt%20to%20generate%20BDD,scenarios))。这样做的目的是在生成阶段约束LLM的输出，使其与已有的步骤实现相匹配，避免产生无法识别的新步骤。
+
+- **步骤定义绑定**：在RiverGame框架中，Gherkin步骤通过步骤定义函数与实际游戏操作代码绑定。开发人员事先为游戏的各类操作和检查编写了步骤实现（例如，`Given 游戏已启动` 可能对应于启动游戏实例的函数）。有了GPT-4生成的Gherkin场景之后，我们需要确保每一句`Given/When/Then`都能在框架中找到对应的实现。这一绑定过程在技术上依赖于RiverGame（或其BDD引擎，例如Cucumber/Behave）的解析机制：框架会将场景中的步骤与步骤库中的正则模式匹配，进而调用相应的底层代码。因此，我们的实施路径包括**验证生成的步骤与已有模式匹配**：若GPT-4严格使用了提供的步骤句式模板，则其输出应当直接被框架识别并绑定到相应函数。如果出现未匹配的情况，我们将采取措施（详见“技术挑战”部分）调整生成策略或扩充步骤定义。
+
+- **测试执行集成**：完成Gherkin场景生成并绑定后，即可利用RiverGame框架执行测试。RiverGame的BDD测试执行模块会读取场景文件，按照场景所述顺序控制游戏执行。例如，框架先根据`Given`配置初始游戏状态（通过游戏API启动或设置场景），然后根据`When`触发游戏中的行为（可能由RiverGame的自动化测试代理来执行玩家操作），最后在`Then`收集实际结果并与预期结果比对 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=its%20subcomponents%20implement%20the%20following,a)) ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=%28c%29%20Results%20Analysis%20,where%20the%20implementation%20of%20the))。在我们的方案中，这一过程无需改变：LLM生成的场景将像人工编写的场景一样传递给框架。需要注意的是，为了实现无缝集成，我们会设计**自动化流水线**：当QA提供一段自然语言描述后，系统会调用GPT-4生成场景文件，并调用RiverGame的命令行或API触发对应测试运行，形成一体化的工具链。
+
+- **效果评估方法**：在集成运行的基础上，我们将通过对比实验评估LLM介入的效果（参见下文“实验设计”部分）。研究方法上将采用定量指标采集和分析。主要的实现步骤包括：记录**生成时间**（由GPT-4生成场景所用时间）与**人工编写时间**做对比；统计**场景执行结果**（通过/失败）以计算执行成功率；分析**场景覆盖的功能点**和**发现的问题**等，以评估生成场景的有效性。此外，还可以通过邀请QA人员对比**场景描述的可读性和正确性**，收集定性反馈。综上，我们以实验数据来验证研究假设：LLM生成的测试用例能否在效率上占优，同时在准确性上不劣于人工案例。
+
+通过上述实施路径，从工具选用、Prompt工程、代码绑定到测试运行和评价，我们将完成对“LLM+Gherkin+游戏测试框架”集成方案的全面探究。我们的流程设计遵循BDD方法论的理念，让非技术人员能够参与（借助LLM自动完成技术细节），也充分结合RiverGame框架现有能力来确保生成测试用例真正落地执行 ([利用 ChatGPT 进行软件测试 | HackerNoon](https://hackernoon.com/lang/zh/%E5%88%A9%E7%94%A8-chatgpt-%E8%BF%9B%E8%A1%8C%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95#:~:text=%E6%A0%B9%E6%8D%AE%20BDD%20%E6%8C%87%E5%8D%97%EF%BC%8C%E4%B8%8A%E8%BF%B0%E8%A1%8C%E4%B8%BA%E5%8F%AF%E4%BB%A5%E7%BC%96%E5%86%99%E4%B8%BA%20Gherkin%20%E8%AF%AD%E6%B3%95%2F%E6%AD%A5%E9%AA%A4%EF%BC%8C%E8%BF%99%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%83%BD%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%8C%E5%B9%B6%E4%B8%94%E4%BD%BF%E7%94%A8,%E7%9A%84%E5%BC%BA%E5%A4%A7%E5%8A%9F%E8%83%BD%E6%9D%A5%E6%90%85%E5%8A%A8%20Gherkin%20%E6%AD%A5%E9%AA%A4%E5%8F%8A%E5%85%B6%E8%87%AA%E5%8A%A8%E5%8C%96%E5%9C%A8%20Cucumber%20%E6%A1%86%E6%9E%B6%E4%B8%8A%E9%80%9F%E5%BA%A6%E6%9B%B4%E5%BF%AB%E3%80%82))。
+
+## 系统实现方案
+
+为清晰展示从“自然语言需求”到“自动化测试结果”的过程，本节以**流程化**方式说明系统的实现方案。整个系统由若干模块组成，按顺序执行以下步骤（见下列流程）：
+
+1. **输入自然语言需求**：QA或测试人员以**自然语言**描述待测试的游戏场景或用户故事。例如：“玩家进入游戏后拾取武器，然后射击，预期子弹数量减少”。这可以是游戏设计文档的一部分，也可以是测试人员口头提出的测试意图。输入可以通过用户界面或命令行提供给系统。
+
+2. **LLM生成Gherkin场景**：系统将上述自然语言需求发送给GPT-4模型，并附加提示要求其生成符合Gherkin语法的测试场景描述。提示中提供**Feature标题**、**Scenario名称**模板，以及约定的`Given/When/Then`步骤句式库 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=The%20prompt%20to%20generate%20BDD,scenarios))。GPT-4接收到指令后，输出一个或多个完整的Gherkin场景。例如模型可能输出：
+
+   ```gherkin
+   Feature: Ammo Count  
+   Scenario: Player shooting reduces ammo count  
+     Given 游戏已开始且玩家持有一把枪  
+     When 玩家开火射击  
+     Then 弹药数量应减少1
+   ```
+
+   （注：以上为示例场景，实际输出取决于具体提示和模型推理。）
+
+3. **场景语法及步骤校验**：生成的Gherkin文本由系统进行解析校验。首先确保基本的Gherkin语法正确（例如关键字缩进、拼写无误）。然后**匹配步骤定义**：系统调用RiverGame框架的步骤库，对场景中的每个Given/When/Then语句尝试匹配已有的正则模式。如果全部匹配成功，进入下一步；如有不匹配的步骤，系统将记录这些不匹配项。针对不匹配的情况，我们的方案是在生成阶段已尽量避免，但万一发生，此时可以有两种处理途径：（a）**人工干预**：提示开发人员为未匹配步骤编写缺失的步骤定义实现，或调整措辞重新生成；（b）**自动反馈**：将不匹配信息反馈给GPT-4，要求其修改措辞以使用已知步骤模式（可作为进一步改进的功能）。这一阶段确保输入框架的场景文件**万无一失**。
+
+4. **RiverGame框架执行测试**：通过RiverGame游戏测试框架的接口，载入经过校验的Gherkin场景文件。框架随即按照BDD流程执行测试 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=its%20subcomponents%20implement%20the%20following,a))。具体而言，RiverGame的测试执行模块会：
+   - 读取场景的`Given`部分：调用对应实现函数来设置游戏初始状态（例如启动游戏、载入指定关卡，或设置玩家状态）。RiverGame框架与游戏被测系统通过**插件/通信接口**交互，例如利用游戏暴露的API或者通过socket通信向游戏发送指令 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=The%20overview%20architecture%20is%20sho,The%20imple)) ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=the%20low,implementation))。
+   - 执行`When`步骤：利用其内置的自动**游戏代理（Agent）**触发玩家行为或游戏事件 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=its%20subcomponents%20implement%20the%20following,a))。例如，当场景包含“When 玩家开火射击”时，代理会模拟按下开火按钮的输入事件。RiverGame框架能够以脚本方式驱动游戏，就像人工玩家一样操作，从而使测试步骤自动化地发生在游戏中。
+   - 检查`Then`结果：在执行完动作后，框架收集游戏的反馈状态或输出。例如，查询游戏内存或通过计算机视觉分析画面上弹药数的显示 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=Visual%20elements%20checked%20automatically%20after,%E2%80%A6))。然后将实际结果与场景中`Then`部分描述的预期结果进行对比验证 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=its%20subcomponents%20implement%20the%20following,a))。如果结果符合预期，则该步骤通过，否则记录为失败并捕获差异（例如日志、截图等辅助信息）。
+
+5. **结果收集与分析**：RiverGame框架在测试执行完毕后，会汇总**测试结果**。每个Scenario的通过/失败状态、失败的步骤及原因、以及可能的性能数据（RiverGame还能收集性能和统计分析 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=partners,engine%2C%20platform%2C%20and%20programming%20language)) ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=Agents%20,extensible%20collection%20of%20agents%20that))）都会输出至报告。例如，框架可能生成控制台日志或结构化的结果文件（JSON/XML）记录哪些场景成功、哪些失败。系统实现中将**自动收集这些结果**，并进一步整理用于评估指标的计算（如成功率）。此外，结果也可视化呈现给测试人员，方便他们了解哪些自动生成的测试通过了，哪些需要关注。
+
+6. **迭代改进**：根据结果分析，我们可以进行迭代。在实际系统中，如果发现LLM生成的某些测试经常失败，需判断是**测试暴露了潜在游戏缺陷**（这反而是有价值的发现）还是**测试用例本身不正确**。对于后者，我们可以调整GPT-4的提示或扩充步骤定义库，让下一轮生成更加精准。这种反馈循环可以逐步提高生成测试用例的质量和框架运行的成功率。
+
+上述流程构成了一个完整的自动化测试用例生成与执行系统：从自然语言到可执行测试再到结果分析，实现了LLM技术与游戏测试框架的有效集成。整个系统实现方案充分利用了RiverGame框架的BDD支持和自动执行能力，将GPT-4融入到测试用例开发阶段，实现了一条**端到端的自动化测试流水线**。
+
+## 实验设计
+
+为评估上述集成方案的效果，我们设计对比实验，比较**人工手写测试规范**与**LLM生成测试规范**在多方面的差异。实验将在相同的游戏测试场景上分别使用两种方法编写并执行测试，并收集以下指标数据：
+
+- **测试用例准确率**：这里的“准确率”指测试场景对需求的正确表述程度以及预期结果的正确性。我们将让资深QA对比每对测试用例（人工版 vs LLM版）与原始需求或游戏设计预期的符合程度，给出准确度评分。例如，LLM生成的Then断言是否真正对应需求中的验收条件。准确率也可以通过测试结果间接体现：如果一个测试场景在无Bug的游戏版本上仍然失败，往往说明场景或断言不正确。因此，我们也以**误报率**（false alarm）衡量准确性——LLM场景不应因为描述错误导致不应有的失败。
+
+- **执行成功率**：指生成的测试场景在RiverGame框架中**无错误执行**并产出结果的比例。具体包括两个层面：(1) **可执行率**：场景的每个步骤都能匹配步骤定义并成功调用，不出现运行时错误或未实现步骤。这反映LLM生成用例在语法和步骤匹配上的正确性 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=Let%E2%80%99s%20construct%20BDD%20scenarios%20using,the%20need%20for%20additional%20modifications))。(2) **通过率**：在没有刻意引入游戏Bug的前提下，测试场景预期都应满足，因此场景实际**通过（Pass）**的比例也应该接近100%。若LLM生成的场景因断言不符而Fail过多，说明其对游戏行为的期望有偏差。我们将分别统计人工组和LLM组测试的通过率，比较两者的差异。
+
+- **测试场景生成速度**：比较采用LLM生成测试用例与人工编写所需时间的差异。我们将记录：（a）**单个场景生成时间**：LLM从接收需求到输出完整场景的时间，通过日志计算；人工编写则由QA记录耗时。（b）**批量生成效率**：例如生成10个不同场景所需总时间。预计GPT-4能够在数秒至一分钟内生成一个场景，而人工可能需要数分钟甚至更长。我们将量化这种效率提升比例，如“平均每个测试用例撰写时间减少X%”。
+
+- **测试场景覆盖面**（可选）：虽然以相同需求为基础，但LLM可能生成与人工不同的场景。我们将比较两组场景对游戏功能的覆盖程度。例如，看LLM是否提出了一些人工未涵盖的情景（如边界条件、异常流程）。这一指标将以定性分析为主，通过对比场景的**多样性**和**功能点涉及**来评估LLM是否有助于扩大测试覆盖。
+
+- **缺陷发现率**（如适用）：如果条件允许，我们可在游戏中**预埋一些Bug或故障**，然后观察两种方法的测试对这些已知问题的发现能力。如果LLM生成的场景在某些情况下比人工更容易触发Bug（例如考虑了某种极端操作次序），那将体现其价值。但由于游戏Bug的不可控性，此指标仅作为附加参考。
+
+**实验过程**：选择游戏中的若干功能模块或场景（例如“角色移动和跳跃”、“战斗中的血量与伤害计算”、“音效触发”等）。对于每个功能场景，让QA团队编写一组Gherkin测试用例作为对照组；同时，我们给GPT-4提供相应的用户故事或测试需求，生成另一组测试用例。确保两组针对**同一需求**，且测试数量相当（例如各5个场景）。然后在相同环境下，用RiverGame框架执行所有测试。记录每个测试的执行结果和耗时。
+
+**评估方法**：根据采集的数据计算上述各项指标，对比分析人工方法与LLM方法的差异。我们将采用统计学方法（如比率比较，平均值比较），必要时进行显著性检验。如果数据量足够，可计算**平均值±标准差**，绘制对比图表等来直观展示。例如：绘制柱状图比较两组的场景通过率、生成时间；绘制散点图展示每个场景准确度评分分布等。
+
+通过该实验设计，我们期望验证：GPT-4生成的BDD测试用例是否能在**保证质量**的前提下，**大幅提升编写速度**，并且对测试框架执行几乎没有负面影响。如果结果积极，将支持论文的核心论点；若发现某些指标上LLM略有不足，也能为改进提供方向。
+
+## 时间进度安排
+
+为确保研究按时完成，下面给出按周划分的时间计划：
+
+1. **第1–2周：文献调研** – 收集阅读与课题相关的资料，包括BDD在游戏测试中的应用、RiverGame框架原理、大型语言模型在软件测试中的探索等。整理国内外研究现状，明确论文的创新点和切入点。
+
+2. **第3周：RiverGame环境搭建与熟悉** – 搭建RiverGame测试框架及示例游戏环境（例如Unity或Unreal提供的样例游戏）。运行官方提供的BDD测试示例，以熟悉框架的测试编写格式和执行流程。分析框架现有的步骤定义库和测试用例结构，为后续GPT集成做准备。
+
+3. **第4周：LLM集成方案设计** – 确定GPT-4集成的技术路线。包括获取OpenAI API密钥、搭建本地调用GPT模型的脚本环境。设计初步的Prompt模板，列出可能用到的Gherkin步骤句式。构思如何将模型输出自动化地对接到RiverGame执行（例如文件格式约定、调用顺序）。
+
+4. **第5–6周：原型实现** – 编写系统原型代码，实现**“自然语言 -> GPT生成Gherkin -> 框架执行”**的基本流程。第5周重点实现GPT-4调用和Gherkin文件生成，第6周完成将生成的.feature文件交由RiverGame运行并捕获结果。期间对GPT输出的处理（如语法校验、文件保存）一并实现。对简单示例需求反复测试该流水线，验证端到端通畅。
+
+5. **第7周：提示词优化与步骤库完善** – 总结原型测试中GPT输出的问题，优化Prompt设计。例如，调整提示内容避免生成多余解释，只输出纯场景；增加对步骤库的强调，减少未匹配步骤的出现。若在前一阶段发现某些常用测试步骤未有实现，可在框架中补充实现（扩充步骤定义函数），以提高生成测试可执行率。
+
+6. **第8–9周：实验准备** – 确定用于实验的具体游戏测试场景和功能模块。编写对照组的手工测试用例（确保质量，尽量代表QA实际水平）。同时收集相关的用户故事或需求描述，准备好提供给GPT-4的输入。在非正式环境下预跑部分GPT生成测试，确保模型输出的场景对选定功能是合理的。制定好评价标准的细节（例如准确率评分标准等），设计记录结果的表格或数据库。
+
+7. **第10–11周：实验执行与数据收集** – 正式进行对比实验。使用第8–9周准备的场景，对每个功能模块获取一批GPT生成测试用例，与人工用例分别执行。严格按照统一环境、多次重复（如每组场景执行3遍取平均）的方法运行测试。收集所有原始数据，包括每个测试的通过/失败、执行时间，GPT生成时间，以及人工编写时间（可通过录像或日志测量）。如果有QA主观评分，则在此期间组织评审会，让他们对准确性等进行盲评打分。
+
+8. **第12周：数据分析** – 将收集的数据整理成可分析的形式，计算各项量化指标。绘制对比图表，总结发现。检查假设验证情况：例如计算LLM相对人工的效率提升百分比、通过率差异。如有异常数据或有意思的特例场景，做个案分析。汇总实验结果，为撰写论文的“结果与分析”章节提供素材。
+
+9. **第13周：撰写论文初稿** – 根据已完成的研究和实验结果，撰写论文各章节内容。首先完成方法和实现细节的描述，然后填写实验结果和讨论。与此同时，将前文的文献综述和背景动机完善。初稿侧重内容完整性，不要求语言完全定稿。
+
+10. **第14周：论文修改定稿** – 邀请导师或同学对初稿提出修改意见。根据反馈调整论文结构和措辞，补充遗漏的论证。确保论文格式符合要求（日文/英文摘要、参考文献等）。完成最终的论文定稿版本。
+
+11. **第15周：论文答辩准备** – 制作答辩用幻灯片，总结整个研究的重点、创新点和结果。进行模拟演讲练习，准备可能的提问答案，特别关注本研究的局限性和未来改进方向，以从容应对答辩。
+
+上述时间表为理想规划，实际过程中若某阶段进展不如预期，将及时调整后续计划。例如，如GPT输出质量问题较多，可能增加优化迭代时间，相应压缩实验执行的范围。但总体来说，该进度安排确保在学期结束前完成研究并提交毕业论文。
+
+## 论文结构草案
+
+为了清晰地展示研究的全过程和成果，论文拟按照标准格式编排以下章节：
+
+1. **绪论**：介绍研究背景和意义，提出待解决的问题和研究目标。在这一章中会描述当前游戏自动化测试面临的挑战，以及引入LLM的潜在价值，进而提出本文的研究课题和主要创新点。最后给出论文的结构安排说明。
+
+2. **背景与相关工作**：回顾BDD（行为驱动开发）方法在软件（尤其是游戏）测试中的应用，包括Gherkin语法及Cucumber等框架原理 ([利用 ChatGPT 进行软件测试 | HackerNoon](https://hackernoon.com/lang/zh/%E5%88%A9%E7%94%A8-chatgpt-%E8%BF%9B%E8%A1%8C%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95#:~:text=%E6%A0%B9%E6%8D%AE%20BDD%20%E6%8C%87%E5%8D%97%EF%BC%8C%E4%B8%8A%E8%BF%B0%E8%A1%8C%E4%B8%BA%E5%8F%AF%E4%BB%A5%E7%BC%96%E5%86%99%E4%B8%BA%20Gherkin%20%E8%AF%AD%E6%B3%95%2F%E6%AD%A5%E9%AA%A4%EF%BC%8C%E8%BF%99%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%83%BD%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%8C%E5%B9%B6%E4%B8%94%E4%BD%BF%E7%94%A8,%E7%9A%84%E5%BC%BA%E5%A4%A7%E5%8A%9F%E8%83%BD%E6%9D%A5%E6%90%85%E5%8A%A8%20Gherkin%20%E6%AD%A5%E9%AA%A4%E5%8F%8A%E5%85%B6%E8%87%AA%E5%8A%A8%E5%8C%96%E5%9C%A8%20Cucumber%20%E6%A1%86%E6%9E%B6%E4%B8%8A%E9%80%9F%E5%BA%A6%E6%9B%B4%E5%BF%AB%E3%80%82))。介绍RiverGame测试框架的设计思想与功能模块 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=The%20framework%20architecture%20consists%20of,three%20main%20compo)) ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=%E2%80%A2Frame%20work%20,This%20is%20the%20place%20where))。综述大型语言模型在软件工程（如代码生成、测试生成）领域的最新研究进展，例如利用GPT系列模型生成测试用例的尝试 ([利用 ChatGPT 进行软件测试 | HackerNoon](https://hackernoon.com/lang/zh/%E5%88%A9%E7%94%A8-chatgpt-%E8%BF%9B%E8%A1%8C%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95#:~:text=%E6%A0%B9%E6%8D%AE%20BDD%20%E6%8C%87%E5%8D%97%EF%BC%8C%E4%B8%8A%E8%BF%B0%E8%A1%8C%E4%B8%BA%E5%8F%AF%E4%BB%A5%E7%BC%96%E5%86%99%E4%B8%BA%20Gherkin%20%E8%AF%AD%E6%B3%95%2F%E6%AD%A5%E9%AA%A4%EF%BC%8C%E8%BF%99%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%83%BD%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%8C%E5%B9%B6%E4%B8%94%E4%BD%BF%E7%94%A8,%E7%9A%84%E5%BC%BA%E5%A4%A7%E5%8A%9F%E8%83%BD%E6%9D%A5%E6%90%85%E5%8A%A8%20Gherkin%20%E6%AD%A5%E9%AA%A4%E5%8F%8A%E5%85%B6%E8%87%AA%E5%8A%A8%E5%8C%96%E5%9C%A8%20Cucumber%20%E6%A1%86%E6%9E%B6%E4%B8%8A%E9%80%9F%E5%BA%A6%E6%9B%B4%E5%BF%AB%E3%80%82))。通过相关工作的分析，指出目前仍缺乏针对游戏领域BDD测试和LLM结合的研究，这正是本文的切入点。
+
+3. **方法设计**：详细阐述“LLM生成Gherkin测试用例与游戏测试框架集成”的方案设计。首先给出系统的总体架构图，说明各模块（LLM生成、测试执行、结果分析）的交互关系。然后分别介绍关键技术点，例如Prompt工程策略（如何约束GPT-4输出特定格式和内容 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=Let%E2%80%99s%20construct%20BDD%20scenarios%20using,the%20need%20for%20additional%20modifications))）、步骤定义库的构建和提供方式、以及将GPT输出融入BDD框架的流程。本章侧重方案的合理性论证：为何这样设计能够提高效率和准确性，并确保生成用例可执行。
+
+4. **系统实现**：描述按照第3章方法设计开发出的原型系统细节。包括开发环境（编程语言、调用的API、硬件配置等）、各模块实现功能、遇到的问题及解决方案。举例说明系统如何从输入到输出工作（可引用一两个具体的测试场景用例作为示范，展示GPT输入提示和输出结果，以及框架执行截屏）。本章还会讨论实现过程中为了工程化所做的优化，如对于GPT返回结果的后处理、异常情况的处理逻辑等。
+
+5. **实验与结果**：列出实验设置、过程和结果分析。首先重述实验设计（测试场景选择、对比方法、指标含义），然后给出数据结果表格和图示，例如“LLM生成 vs 人工编写用例的时间对比图”、“测试通过率对比表”等。对结果进行分析讨论：哪个方面LLM表现占优，哪些方面仍需改进；是否支持了论文假设。例如，如果结果显示GPT-4生成用例的时间仅为人工的20%，且通过率相当，我们将讨论其意义。若有指标不利于LLM方案，也需分析原因（如GPT生成的一些断言不严谨导致误报）。
+
+6. **讨论**（可选，或与第5章合并）：从更高层面讨论本研究的意义和局限。比如，探讨该方案在实际游戏开发流程中的适用性，QA接受度如何；LLM在测试中可能带来的新问题（如对模型稳定性的依赖、潜在偏见）。也可以探讨本方法如何推广到其他类型的软件测试，以及如果未来更强的模型出现，对本研究的影响。此章作为对实验结果的补充思考。
+
+7. **结论与展望**：总结全文，重申本研究解决的问题和取得的成果。强调通过本研究，我们确认了LLM在游戏自动化测试中能够发挥的作用 ([利用 ChatGPT 进行软件测试 | HackerNoon](https://hackernoon.com/lang/zh/%E5%88%A9%E7%94%A8-chatgpt-%E8%BF%9B%E8%A1%8C%E8%BD%AF%E4%BB%B6%E6%B5%8B%E8%AF%95#:~:text=%E6%A0%B9%E6%8D%AE%20BDD%20%E6%8C%87%E5%8D%97%EF%BC%8C%E4%B8%8A%E8%BF%B0%E8%A1%8C%E4%B8%BA%E5%8F%AF%E4%BB%A5%E7%BC%96%E5%86%99%E4%B8%BA%20Gherkin%20%E8%AF%AD%E6%B3%95%2F%E6%AD%A5%E9%AA%A4%EF%BC%8C%E8%BF%99%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%83%BD%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B%EF%BC%8C%E5%B9%B6%E4%B8%94%E4%BD%BF%E7%94%A8,%E7%9A%84%E5%BC%BA%E5%A4%A7%E5%8A%9F%E8%83%BD%E6%9D%A5%E6%90%85%E5%8A%A8%20Gherkin%20%E6%AD%A5%E9%AA%A4%E5%8F%8A%E5%85%B6%E8%87%AA%E5%8A%A8%E5%8C%96%E5%9C%A8%20Cucumber%20%E6%A1%86%E6%9E%B6%E4%B8%8A%E9%80%9F%E5%BA%A6%E6%9B%B4%E5%BF%AB%E3%80%82))。指出当前方案的不足之处（例如需要一定人工监督，或者在某些复杂场景下模型效果有限）。最后展望未来的工作方向，如考虑引入**强化学习**进一步优化测试生成，或者结合计算机视觉让LLM理解游戏画面来生成更复杂的验证步骤，抑或将该方案应用到不同类型的游戏/软件中去验证通用性。
+
+论文结构草案如上，各章节将逻辑连贯地展示从理论到实践再到验证的完整过程，符合本科毕业论文的要求和规范。其中重点章节为方法和实验部分，预计字数和篇幅较多，以充分体现研究的技术细节和数据支撑。
+
+## 技术挑战与应对策略
+
+在实施“LLM+Gherkin+游戏测试框架”集成方案时，我们预见了一些技术挑战。下面列举主要挑战及拟定的应对策略：
+
+- **语义偏差**：GPT-4生成的测试场景可能在语义上与预期有所偏离。例如，同一句自然语言需求，不同提示可能生成稍有出入的步骤描述，导致测试关注点跑偏。*应对策略*：加强Prompt工程，精确描述游戏背景和需求要点，尽量减少模型自由发挥的空间。同时在生成后引入**人工校验环节**或制定**校验规则**（如关键术语是否包含，步骤逻辑顺序是否合理），及时发现并纠正语义偏差。另外，可以提供**示例场景**作为Few-shot提示，让模型仿照正确范例行文，从而减少语义走偏的概率。
+
+- **生成步骤无法匹配**：LLM可能输出超出步骤定义库范围的表达。例如步骤实现库中只有“当玩家跳跃”函数，而模型生成了“当玩家双击跳跃键”这样的步骤，导致框架匹配失败。*应对策略*：在提示中严格限定可用的步骤短语 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=The%20prompt%20to%20generate%20BDD,scenarios))。正如Vitaliy Potapov的案例所示，通过将**所有支持的步骤**列表提供给ChatGPT并要求“strictly use only these steps”，模型可被引导在给定范围内组合句子 ([Generate BDD tests with ChatGPT and run them with Playwright | by Vitaliy Potapov | Medium](https://medium.com/@vitaliypotapov/generate-bdd-tests-with-chatgpt-and-run-them-with-playwright-e1ce29d7a7bd#:~:text=Let%E2%80%99s%20construct%20BDD%20scenarios%20using,the%20need%20for%20additional%20modifications))。此外，构建一个**同义词映射**表，当模型输出与已有步骤含义相同但措辞不同的句子时，可自动转换为已存在的步骤。若出现新的有意义的步骤（模型可能无意提出了测试新思路），则记录下来，由开发者评估是否值得将其实现加入框架，从而不断扩充步骤库。
+
+- **预期结果获取与验证困难**：在Then步骤中，LLM需要描述预期结果。但游戏的反馈有时复杂（例如视觉变化或声音事件），LLM可能难以准确描述验证方法。*应对策略*：预先定义若干可验证的结果检查模式供模型使用，例如“Then 游戏画面中应出现文字{string}”或“Then 应播放声音{string}”。这样模型只需填空具体参数即可，不需自创验证方式。对于复杂的结果（如视觉效果），可能借助RiverGame已有的分析插件，如图像识别或音频分析模块 ([(PDF) RiverGame - a game testing tool using artificial intelligence](https://www.researchgate.net/publication/361316914_RiverGame_-_a_game_testing_tool_using_artificial_intelligence#:~:text=partners,engine%2C%20platform%2C%20and%20programming%20language))，将期望描述为这些模块能识别的高层输出（例如“Then 骰子结果应为6”，由框架识别骰子朝上的面是否为6）。必要时，在实验中限制选取那些**易验证**的需求场景，让LLM生成时不至于处理过于主观的结果判断。
+
+- **LLM输出格式与稳定性**：虽然GPT-4通常遵循格式要求，但仍需防范输出中夹杂解释性文字、格式不正确换行等问题。*应对策略*：通过**后处理脚本**清理输出，例如剔除非Gherkin语句内容，只保留以Given/When/Then开头的行。另外在Prompt中直接明示：“只输出Gherkin场景内容，不要任何多余解释”。对于稳定性，在大量生成时可能出现**变异**（如有时缩进错误），我们将加入**格式校验**步骤，发现问题自动重新请求模型生成。此外，可考虑使用**GPT-4的系统信息**或**温度参数**降低，使输出更加严谨一致。
+
+- **模型局限与依赖**：GPT-4作为第三方服务，其可用性、成本都是考虑因素。如果在没有联网或额度不足时可能影响生成。*应对策略*: 在实验阶段确保有足够的API调用额度，并缓存已经生成的结果避免重复消耗。长期看，可探索**开源模型**（如Claude、Llama系列）作为备选，以降低依赖。另一个局限是模型对新领域的理解有限，尤其游戏的特殊机制，如果需求超出模型知识，可能输出错误。对此，我们尽量在Prompt里加入**游戏机制说明**，并在结果评审时保留人工复核重要场景。
+
+综上，虽然存在诸多挑战，我们已经针对每一点制定了相应策略，以确保研究的顺利推进和最终系统的实用性。通过不断的测试和优化，我们有信心在保证生成测试用例质量的同时，克服LLM应用于游戏测试的潜在问题，使其真正为提高测试效率服务。

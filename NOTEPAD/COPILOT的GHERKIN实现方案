@@ -1,0 +1,115 @@
+我看了你的论文实现方案，发现需要建立以下项目架构来支持LLM+Gherkin+游戏测试框架的集成：
+
+1. 项目目录结构建议：
+
+```
+game-testing/
+├── src/
+│   ├── llm/
+│   │   ├── __init__.py
+│   │   ├── gpt_client.py      # GPT API调用封装
+│   │   └── prompt_templates.py # 提示词模板
+│   ├── gherkin/
+│   │   ├── __init__.py
+│   │   ├── parser.py          # Gherkin语法解析
+│   │   └── steps/             # 步骤定义库
+│   ├── rivergame/
+│   │   ├── __init__.py  
+│   │   └── test_runner.py     # 测试执行器
+│   └── utils/
+│       ├── __init__.py
+│       └── config.py          # 配置文件
+├── tests/                     # 单元测试
+├── features/                  # 生成的Gherkin场景文件
+├── results/                   # 测试结果输出
+├── requirements.txt
+└── config.yaml               # API密钥等配置
+```
+
+2. API KEY配置建议:
+
+创建config.yaml文件(注意不要提交到版本控制):
+
+````yaml
+api:
+  openai:
+    api_key: "your-api-key-here"
+    model: "gpt-4-1106-preview"
+    temperature: 0.7
+    max_tokens: 1000
+  
+rivergame:
+  host: "localhost"
+  port: 8080
+  
+logging:
+  level: INFO
+  file: "logs/app.log"
+````
+
+3. GPT客户端封装:
+
+````python
+import os
+import yaml
+import openai
+from typing import Dict, Any
+
+class GPTClient:
+    def __init__(self, config_path: str = "config.yaml"):
+        # 加载配置
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+            
+        # 设置API密钥
+        openai.api_key = config["api"]["openai"]["api_key"]
+        self.model = config["api"]["openai"]["model"]
+        self.temperature = config["api"]["openai"]["temperature"]
+        self.max_tokens = config["api"]["openai"]["max_tokens"]
+    
+    async def generate_test_scenario(self, prompt: str) -> str:
+        """调用GPT生成测试场景"""
+        try:
+            response = await openai.ChatCompletion.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "你是一个游戏测试专家..."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"GPT API调用失败: {e}")
+            return None
+````
+
+4. 安全性建议:
+- 不要将API密钥直接硬编码在代码中
+- 使用环境变量或加密配置文件存储敏感信息
+- 添加.gitignore忽略config.yaml
+- 实现API调用错误重试和限流机制
+
+5. 缺失的关键组件:
+- Gherkin解析器实现
+- 步骤定义注册机制
+- RiverGame框架集成接口
+- 测试结果收集分析模块
+- 日志记录系统
+
+6. 改进建议:
+- 添加API调用限额监控
+- 实现结果缓存机制避免重复调用
+- 增加异步队列处理大批量生成请求 
+- 完善错误处理和日志记录
+- 添加单元测试覆盖核心功能
+
+你可以按照以上建议完善项目架构。关于API KEY的接入,建议:
+
+1. 创建一个专门的测试API KEY用于开发
+2. 使用环境变量存储正式KEY
+3. 实现KEY轮转机制应对配额限制
+4. 添加API调用统计和监控
+
+需要我详细说明某个部分的实现吗?
