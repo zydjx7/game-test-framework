@@ -9,31 +9,131 @@ Gherkin测试自动化脚本
 import os
 import sys
 import time
+import subprocess
+import signal
+import atexit
 from test_generator.test_executor import TestExecutor
 from dotenv import load_dotenv
+from loguru import logger
+
+# 确保logs目录存在
+logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(logs_dir, exist_ok=True)
+
+# 设置日志
+logger.add(os.path.join(logs_dir, "run_tests.log"), level="DEBUG", rotation="1 MB")
 
 # 加载环境变量中的API密钥
 load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
 
+# 启动Flask服务器
+def start_flask_server():
+    """启动视觉检测服务器"""
+    logger.info("正在启动Flask视觉检测服务器...")
+    server_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                              'GameStateChecker/main_flask_server.py')
+    
+    # 确保日志目录存在
+    flask_logs_dir = os.path.join(logs_dir, "flask")
+    os.makedirs(flask_logs_dir, exist_ok=True)
+    
+    try:
+        # 检查服务器是否已经在运行
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(('localhost', 5000))
+        sock.close()
+        
+        if result == 0:
+            logger.info("Flask服务器似乎已经在运行，端口5000被占用")
+            return None
+            
+        # 启动服务器进程，重定向日志到文件
+        server = subprocess.Popen(
+            [sys.executable, server_path],
+            stdout=open(os.path.join(flask_logs_dir, "flask_stdout.log"), "w"),
+            stderr=open(os.path.join(flask_logs_dir, "flask_stderr.log"), "w")
+        )
+        
+        logger.info(f"Flask服务器启动 (PID: {server.pid})")
+        
+        # 注册关闭函数
+        def cleanup():
+            logger.info("正在关闭Flask服务器...")
+            if server.poll() is None:  # 如果进程还在运行
+                server.send_signal(signal.SIGTERM)
+                server.wait(timeout=5)  # 等待最多5秒
+                if server.poll() is None:  # 如果还没有退出
+                    server.kill()  # 强制终止
+            logger.info("Flask服务器已关闭")
+        
+        atexit.register(cleanup)
+        
+        # 给服务器更多的启动时间
+        wait_time = 5  # 增加到5秒
+        logger.info(f"等待Flask服务器启动 ({wait_time}秒)...")
+        time.sleep(wait_time)
+        
+        # 确认服务器是否正常启动
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(('localhost', 5000))
+        sock.close()
+        
+        if result != 0:
+            logger.error("Flask服务器似乎没有正常启动，端口5000未被占用")
+            # 检查服务器是否已经退出
+            if server.poll() is not None:
+                logger.error(f"Flask服务器进程已退出，退出码: {server.returncode}")
+                logger.error("请查看日志文件获取更多信息: " + os.path.join(flask_logs_dir, "flask_stderr.log"))
+                return None
+        else:
+            logger.info("Flask服务器已成功监听端口5000")
+        
+        return server
+    
+    except Exception as e:
+        logger.error(f"启动Flask服务器失败: {e}")
+        return None
+
+# 1. 预定义测试模式
 def run_predefined_tests():
     """运行预定义的测试用例"""
+    # 启动Flask服务器
+    server = start_flask_server()
+    
     from behave.runner import Runner
     from behave.configuration import Configuration
     
-    config = Configuration()
-    config.paths = ["features/"]
+    # 获取当前目录作为根目录
+    root = os.path.dirname(os.path.abspath(__file__))
+    
+    # 使用空列表作为command_args，避免Behave解析sys.argv
+    config = Configuration(command_args=[])
+    
+    # 设置正确的特性文件和格式
+    config.paths = [os.path.join(root, "features")]
+    config.format = ["pretty"]
+    
+    logger.info(f"使用特性目录: {config.paths[0]}")
+    
     runner = Runner(config)
-    return runner.run()
+    result = runner.run()
+    
+    return result == 0  # 返回布尔值表示成功/失败
 
+# 2. 生成单个测试模式
 def run_generated_tests(api_key=None, requirement=None):
     """运行自动生成的测试用例"""
     if not api_key:
-        print("未提供API密钥，将尝试从环境变量加载")
+        logger.info("未提供API密钥，将尝试从环境变量加载")
     
     # 如果未提供需求，使用默认需求
     if not requirement:
         requirement = "测试游戏中的武器系统，包括准星显示和弹药计数功能"
+    
+    # 启动Flask服务器
+    server = start_flask_server()
     
     # 创建测试执行器
     executor = TestExecutor(api_key)
@@ -50,17 +150,24 @@ def run_generated_tests(api_key=None, requirement=None):
     # 生成报告
     report = executor.generate_report(result, generation_time)
     
+    logger.info(f"测试完成！结果：{report}")
     print(f"测试完成！结果：{report}")
-    return report
+    
+    # 返回布尔值以便于sys.exit()使用
+    return report["status"] == "success"
 
+# 3. 批量生成测试模式
 def run_batch_tests(api_key=None, requirement=None, count=5):
     """运行批量生成的测试用例"""
     if not api_key:
-        print("未提供API密钥，将尝试从环境变量加载")
+        logger.info("未提供API密钥，将尝试从环境变量加载")
     
     # 如果未提供需求，使用默认需求
     if not requirement:
         requirement = "测试游戏中的武器系统，包括准星显示、弹药计数和武器切换功能"
+    
+    # 启动Flask服务器
+    server = start_flask_server()
     
     # 创建测试执行器
     executor = TestExecutor(api_key)
@@ -77,8 +184,11 @@ def run_batch_tests(api_key=None, requirement=None, count=5):
     # 生成报告
     report = executor.generate_report(result, generation_time)
     
+    logger.info(f"批量测试完成！结果：{report}")
     print(f"批量测试完成！结果：{report}")
-    return report
+    
+    # 返回布尔值以便于sys.exit()使用
+    return report["status"] == "success"
 
 if __name__ == "__main__":
     import argparse
@@ -88,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--req", dest="requirement", help="测试需求描述")
     parser.add_argument("--count", type=int, default=5, help="批量生成的测试用例数量")
     parser.add_argument("--mode", choices=["predefined", "generated", "batch"], 
-                        default="generated", help="测试模式：预定义/生成单个/批量生成")
+                        default="predefined", help="测试模式：预定义/生成单个/批量生成")
     
     args = parser.parse_args()
     
@@ -105,4 +215,4 @@ if __name__ == "__main__":
         print(f"生成并运行{args.count}个测试用例...")
         result = run_batch_tests(api_key, args.requirement, args.count)
     
-    sys.exit(0 if result else 1) 
+    sys.exit(0 if result else 1)

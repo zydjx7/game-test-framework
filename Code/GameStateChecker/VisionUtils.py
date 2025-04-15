@@ -12,7 +12,7 @@ class VisionUtils:
     # 初始化Tesseract路径
     config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config.yaml')
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:  # 明确指定UTF-8编码
             config = yaml.safe_load(f)
             tesseract_path = config.get('vision', {}).get('tesseract', {}).get('path')
             if tesseract_path:

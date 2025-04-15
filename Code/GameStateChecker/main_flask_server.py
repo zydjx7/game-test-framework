@@ -3,6 +3,8 @@ import jsonpickle
 import numpy as np
 import cv2
 import LogicLayer
+import os
+import sys
 
 # Initialize the Flask application
 app = Flask(__name__)
@@ -54,14 +56,22 @@ def testUI(context, requestFunc, requestExpectedAnswer):
     numScreenshots = context["screenshotsCount"]
     screenshotData = context["screenshotData"]
     # TODO: fix multiple screenshots sending
-    # convert string of image data to uint8
-
-    # todo
-    # img_asnumpy = np.fromstring(screenshotData, np.uint8)
-    img_asnumpy = np.frombuffer(screenshotData, np.uint8)
-
-    # decode image
-    imgs = [cv2.imdecode(img_asnumpy, cv2.IMREAD_COLOR)]
+    
+    try:
+        # 将hex字符串转换回bytes
+        bytes_data = bytes.fromhex(screenshotData)
+        # 然后再转换为numpy数组
+        img_asnumpy = np.frombuffer(bytes_data, np.uint8)
+        
+        # decode image
+        imgs = [cv2.imdecode(img_asnumpy, cv2.IMREAD_COLOR)]
+        
+        if imgs[0] is None:
+            print("警告: 图像解码失败，请检查数据格式")
+            return {'result': False, 'message': '图像解码失败'}
+    except Exception as e:
+        print(f"图像解码错误: {str(e)}")
+        return {'result': False, 'message': f'图像解码错误: {str(e)}'}
 
     # Step 2: check the type of test and conduct the appropiate check, get results
     res = 0
@@ -86,6 +96,19 @@ def check_sounds():
     return response
     pass
 
-# start flask app
-app.run(host="0.0.0.0", port=5000)
+# 只在直接运行时启动Flask服务器，作为模块导入时不启动
+if __name__ == '__main__':
+    try:
+        # 读取环境变量可选指定端口，默认5000
+        port = int(os.getenv("GAMECHECK_PORT", "5000"))
+        print(f"[Flask] starting on port {port}")
+        
+        # 禁用dotenv自动加载，避免编码问题
+        os.environ["FLASK_SKIP_DOTENV"] = "1"
+        
+        # 启动Flask应用
+        app.run(host="0.0.0.0", port=port)
+    except Exception as e:
+        print(f"Flask服务器启动失败: {e}", file=sys.stderr)
+        sys.exit(1)
 

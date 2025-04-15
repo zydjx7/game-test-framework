@@ -6,11 +6,13 @@ import json
 import numpy as np
 import cv2
 import LogicLayer
+import os
 
-# TODO: parametrize these
-addr = 'http://localhost:5000'
+# 使用环境变量获取端口，默认5000
+port = os.getenv("GAMECHECK_PORT", "5000")
+addr = f'http://localhost:{port}'
 check_visuals_url = addr + '/check_visuals'
-check_sounds_url = addr + '/check_sounds '
+check_sounds_url = addr + '/check_sounds'
 
 
 # this is the public function to be imported and used by the game
@@ -34,7 +36,7 @@ class GameStateChecker_Client:
 
         # TODO: fix this to get bytes instead
         testContext["screenshotsCount"] = 1
-        testContext["screenshotData"] = img_encoded.tostring()
+        testContext["screenshotData"] = img_encoded.tobytes().hex()
 
         # send http request with image, some query info and receive response
         msg = {'testContext': testContext, 'expectedAnswer' : expectedAnswer}

@@ -6,37 +6,60 @@ import json
 from loguru import logger
 
 # 确保logs目录存在
-logs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
 os.makedirs(logs_dir, exist_ok=True)
 
 # 设置日志
 logger.add(os.path.join(logs_dir, "weapon_steps.log"), level="DEBUG", rotation="1 MB")
 
-# Add the GameStateChecker directory to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../GameStateChecker'))
+# 使用绝对路径添加GameStateChecker目录
+game_checker_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '..', 'GameStateChecker'))
+sys.path.append(game_checker_path)
+logger.info(f"已添加GameStateChecker路径: {game_checker_path}")
 
-from main_flask_client import GameStateChecker_Client
+# 在导入前显示Python路径和目录内容，帮助调试
+logger.debug(f"Python路径: {sys.path}")
+logger.debug(f"GameStateChecker目录内容: {os.listdir(game_checker_path) if os.path.exists(game_checker_path) else '目录不存在'}")
+
+# 尝试直接从绝对路径导入
+import importlib.util
+try:
+    client_path = os.path.join(game_checker_path, 'main_flask_client.py')
+    if os.path.exists(client_path):
+        logger.info(f"主动加载模块: {client_path}")
+        spec = importlib.util.spec_from_file_location("main_flask_client", client_path)
+        main_flask_client = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(main_flask_client)
+        GameStateChecker_Client = main_flask_client.GameStateChecker_Client
+        logger.info("成功导入GameStateChecker_Client")
+    else:
+        logger.error(f"主动加载失败，文件不存在: {client_path}")
+        raise ImportError(f"文件不存在: {client_path}")
+except Exception as e:
+    logger.exception(f"导入GameStateChecker_Client失败: {str(e)}")
+    raise
 
 # 定义游戏测试类，封装对CPP测试层的调用
 class GameTester:
     def __init__(self):
         logger.info("初始化GameTester")
         self.checker_client = GameStateChecker_Client()
-        self.screenshot_path = os.path.join(os.path.dirname(__file__), 
-                                         '../../GameStateChecker/unitTestResources/p1.png')
+        
+        # 使用绝对路径定位截图文件
+        self.screenshot_path = os.path.join(game_checker_path, 'unitTestResources', 'p1.png')
         
         # 验证截图文件是否存在
         if not os.path.exists(self.screenshot_path):
             logger.error(f"截图文件不存在: {self.screenshot_path}")
             # 尝试查找替代截图
-            test_resources_dir = os.path.join(os.path.dirname(__file__), '../../GameStateChecker/unitTestResources')
+            test_resources_dir = os.path.join(game_checker_path, 'unitTestResources')
             if not os.path.exists(test_resources_dir):
                 os.makedirs(test_resources_dir, exist_ok=True)
                 logger.warning(f"创建了测试资源目录: {test_resources_dir}")
             
             # 尝试查找其他可用的截图
             alt_screenshots = []
-            for root, dirs, files in os.walk(os.path.join(os.path.dirname(__file__), '../../GameStateChecker')):
+            for root, dirs, files in os.walk(game_checker_path):
                 for file in files:
                     if file.endswith('.png'):
                         alt_screenshots.append(os.path.join(root, file))

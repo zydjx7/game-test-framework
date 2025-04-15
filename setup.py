@@ -15,7 +15,9 @@ setup(
         "loguru>=0.5.3",
         "opencv-python>=4.5.0",
         "numpy>=1.21.0",
-        "pillow>=8.0.0"
+        "pillow>=8.0.0",
+        "flask>=2.2.0",
+        "jsonpickle>=2.0.0"  # 添加jsonpickle依赖
     ],
     python_requires=">=3.8",
 )

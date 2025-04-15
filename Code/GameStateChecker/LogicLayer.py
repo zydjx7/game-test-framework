@@ -4,6 +4,7 @@ from typing import List, Tuple, Dict
 from VisionUtils import VisionUtils
 import cv2
 import re
+import numpy as np  # 添加numpy导入
 from loguru import logger
 
 class LogicLayer:
@@ -150,11 +151,11 @@ class LogicLayer:
         @return: (bool, str) - (是否匹配, 详细信息)
         """
         try:
-            if not isinstance(screenshot_path, (str, numpy.ndarray)):
+            if not isinstance(screenshot_path, (str, np.ndarray)):
                 return False, "无效的截图输入"
                 
             # 处理图像数组输入
-            if isinstance(screenshot_path, numpy.ndarray):
+            if isinstance(screenshot_path, np.ndarray):
                 image = screenshot_path
             else:
                 if not os.path.exists(screenshot_path):
