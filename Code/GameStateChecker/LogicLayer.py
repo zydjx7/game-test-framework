@@ -296,6 +296,7 @@ class LogicLayer:
                 debugEnabled, 
                 filename_suffix, 
                 debug_dir
+                
             )
             
             # 将OCR结果保存到context中以便在测试循环中使用
@@ -563,4 +564,5 @@ if __name__ == "__main__":
     logger.info(f"弹药测试结果: {ammo_pass}/{ammo_total} 通过, 通过率: {ammo_pass/ammo_total*100 if ammo_total > 0 else 0:.2f}%")
     
     logger.info("视觉检测调试完成")
+
 

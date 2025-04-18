@@ -182,7 +182,7 @@ class VisionUtils:
         @param debugEnabled: 是否启用调试
         @param debug_dir: 调试图像保存目录
         @param filename_suffix: 调试文件名后缀，用于区分不同图像的调试输出
-        @return: 匹配的特征点列表、最小特征点要求和模板匹配相关系数
+        @return: 匹配的特征点列表和最小特征点要求
         """
         try:
             # 检查图片类型
@@ -216,9 +216,6 @@ class VisionUtils:
             flann = cv2.FlannBasedMatcher(index_params, search_params)
             
             good_matches = []
-            
-            # 设置默认模板匹配相关性得分
-            max_val = 0.0
             
             # 确保检测到足够的特征点
             if des1 is not None and des2 is not None and len(des1) > 0 and len(des2) > 0:
@@ -256,43 +253,40 @@ class VisionUtils:
                 else:
                     logger.debug("未找到SIFT特征匹配，无法生成匹配图像")
                 
-            # 无论如何都进行模板匹配，以确保有相关性得分可用
-            # 进行模板匹配
-            template_result = cv2.matchTemplate(img_target, img_src, cv2.TM_CCOEFF_NORMED)
-            _, max_val, _, max_loc = cv2.minMaxLoc(template_result)
-            
+            # 如果匹配点不足，尝试模板匹配
             if len(good_matches) < minKeypoints:
+                # 进行模板匹配
+                template_result = cv2.matchTemplate(img_target, img_src, cv2.TM_CCOEFF_NORMED)
+                _, max_val, _, max_loc = cv2.minMaxLoc(template_result)
+                
                 logger.debug(f"特征点匹配不足({len(good_matches)}/{minKeypoints})，使用模板匹配备选，相关性得分:{max_val:.3f}")
-            else:
-                logger.debug(f"特征点匹配充足({len(good_matches)}/{minKeypoints})，额外计算模板相关性得分:{max_val:.3f}")
                 
-            # 保存模板匹配结果
-            if debugEnabled:
-                # 保存相关性得分图
-                suffix = f"_{filename_suffix}" if filename_suffix else ""
-                corr_path = os.path.join(debug_dir, f"template_correlation{suffix}.png")
-                cv2.imwrite(corr_path, template_result * 255)
-                
-                # 在目标图像上绘制最佳匹配位置
-                h, w = img_src.shape
-                top_left = max_loc
-                bottom_right = (top_left[0] + w, top_left[1] + h)
-                result_img = cv2.cvtColor(img_target.copy(), cv2.COLOR_GRAY2BGR) if len(img_target.shape) < 3 else img_target.copy()
-                cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
-                pos_path = os.path.join(debug_dir, f"template_match_position{suffix}.png")
-                cv2.imwrite(pos_path, result_img)
-                
-                logger.debug(f"已保存模板匹配结果图像到 {debug_dir} 目录")
+                # 保存模板匹配结果
+                if debugEnabled:
+                    # 保存相关性得分图
+                    suffix = f"_{filename_suffix}" if filename_suffix else ""
+                    corr_path = os.path.join(debug_dir, f"template_correlation{suffix}.png")
+                    cv2.imwrite(corr_path, template_result * 255)
+                    
+                    # 在目标图像上绘制最佳匹配位置
+                    h, w = img_src.shape
+                    top_left = max_loc
+                    bottom_right = (top_left[0] + w, top_left[1] + h)
+                    result_img = cv2.cvtColor(img_target.copy(), cv2.COLOR_GRAY2BGR) if len(img_target.shape) < 3 else img_target.copy()
+                    cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
+                    pos_path = os.path.join(debug_dir, f"template_match_position{suffix}.png")
+                    cv2.imwrite(pos_path, result_img)
+                    
+                    logger.debug(f"已保存模板匹配结果图像到 {debug_dir} 目录")
             
             matched = len(good_matches) >= minKeypoints
-            logger.info(f"特征点匹配结果: {len(good_matches)}/{minKeypoints}, 匹配状态: {matched}, 模板相关性得分: {max_val:.3f}")
+            logger.info(f"特征点匹配结果: {len(good_matches)}/{minKeypoints}, 匹配状态: {matched}")
             
-            # 返回三个值：好的匹配点、最小特征点要求和模板匹配相关系数
-            return good_matches, minKeypoints, max_val
+            return good_matches, minKeypoints
             
         except Exception as e:
             logger.error(f"模板匹配过程中出错: {e}")
-            return [], minKeypoints, 0.0
+            return [], minKeypoints
 
     @staticmethod
     def matchTemplateSimple(img_target, img_src, threshold=None, debugEnabled=False, 
@@ -447,3 +441,4 @@ class VisionUtils:
         cv2.imshow("processed image", img)
         cv2.waitKey()
         cv2.imwrite("Cross_p.png", img)
+
