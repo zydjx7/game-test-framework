@@ -40,6 +40,9 @@ class TestGenerator:
         - Then the ammo count should decrease (弹药数量应该减少)
         - Then the ammo count should match the expected value (弹药数量应该与预期值匹配)
         
+        注意：本框架不驱动真实游戏，只验证静态截图，场景里不要引入需要实时交互的步骤。
+        当前测试针对的是AssaultCube游戏，请确保测试场景符合这款FPS游戏的特性。
+        
         仅输出Gherkin场景，不要包含任何解释。使用Feature:和Scenario:关键字，并确保格式正确。
         """
     
@@ -80,6 +83,9 @@ class TestGenerator:
             - Then the crosshair should be visible (准星应该可见)
             - Then the ammo count should decrease (弹药数量应该减少)
             - Then the ammo count should match the expected value (弹药数量应该与预期值匹配)
+            
+            注意：本框架不驱动真实游戏，只验证静态截图，场景里不要引入需要实时交互的步骤。
+            当前测试针对的是AssaultCube游戏，请确保测试场景符合这款FPS游戏的特性。
             
             使用Feature:和多个Scenario:关键字，并确保格式正确。
             """

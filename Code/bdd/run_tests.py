@@ -28,7 +28,7 @@ load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
 
 # 启动Flask服务器
-def start_flask_server():
+def start_flask_server(target=None):
     """启动视觉检测服务器"""
     logger.info("正在启动Flask视觉检测服务器...")
     server_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
@@ -49,11 +49,17 @@ def start_flask_server():
             logger.info("Flask服务器似乎已经在运行，端口5000被占用")
             return None
             
-        # 启动服务器进程，重定向日志到文件
+        # 启动服务器进程，重定向日志到文件，如果指定了target则传递环境变量
+        env = os.environ.copy()
+        if target:
+            env["GAMECHECK_TARGET"] = target
+            logger.info(f"设置测试目标为: {target}")
+            
         server = subprocess.Popen(
             [sys.executable, server_path],
             stdout=open(os.path.join(flask_logs_dir, "flask_stdout.log"), "w"),
-            stderr=open(os.path.join(flask_logs_dir, "flask_stderr.log"), "w")
+            stderr=open(os.path.join(flask_logs_dir, "flask_stderr.log"), "w"),
+            env=env
         )
         
         logger.info(f"Flask服务器启动 (PID: {server.pid})")
@@ -97,10 +103,10 @@ def start_flask_server():
         return None
 
 # 1. 预定义测试模式
-def run_predefined_tests():
+def run_predefined_tests(target=None):
     """运行预定义的测试用例"""
     # 启动Flask服务器
-    server = start_flask_server()
+    server = start_flask_server(target)
     
     from behave.runner import Runner
     from behave.configuration import Configuration
@@ -115,6 +121,10 @@ def run_predefined_tests():
     config.paths = [os.path.join(root, "features")]
     config.format = ["pretty"]
     
+    # 设置环境变量以便传递target给steps文件
+    if target:
+        os.environ["GAMECHECK_TARGET"] = target
+    
     logger.info(f"使用特性目录: {config.paths[0]}")
     
     runner = Runner(config)
@@ -123,7 +133,7 @@ def run_predefined_tests():
     return result == 0  # 返回布尔值表示成功/失败
 
 # 2. 生成单个测试模式
-def run_generated_tests(api_key=None, requirement=None):
+def run_generated_tests(api_key=None, requirement=None, target=None):
     """运行自动生成的测试用例"""
     if not api_key:
         logger.info("未提供API密钥，将尝试从环境变量加载")
@@ -133,10 +143,10 @@ def run_generated_tests(api_key=None, requirement=None):
         requirement = "测试游戏中的武器系统，包括准星显示和弹药计数功能"
     
     # 启动Flask服务器
-    server = start_flask_server()
+    server = start_flask_server(target)
     
     # 创建测试执行器
-    executor = TestExecutor(api_key)
+    executor = TestExecutor(api_key, target=target)
     
     # 开始计时
     start_time = time.time()
@@ -157,7 +167,7 @@ def run_generated_tests(api_key=None, requirement=None):
     return report["status"] == "success"
 
 # 3. 批量生成测试模式
-def run_batch_tests(api_key=None, requirement=None, count=5):
+def run_batch_tests(api_key=None, requirement=None, count=5, target=None):
     """运行批量生成的测试用例"""
     if not api_key:
         logger.info("未提供API密钥，将尝试从环境变量加载")
@@ -167,10 +177,10 @@ def run_batch_tests(api_key=None, requirement=None, count=5):
         requirement = "测试游戏中的武器系统，包括准星显示、弹药计数和武器切换功能"
     
     # 启动Flask服务器
-    server = start_flask_server()
+    server = start_flask_server(target)
     
     # 创建测试执行器
-    executor = TestExecutor(api_key)
+    executor = TestExecutor(api_key, target=target)
     
     # 开始计时
     start_time = time.time()
@@ -197,6 +207,7 @@ if __name__ == "__main__":
     parser.add_argument("--api-key", dest="api_key", help="OpenAI API密钥")
     parser.add_argument("--req", dest="requirement", help="测试需求描述")
     parser.add_argument("--count", type=int, default=5, help="批量生成的测试用例数量")
+    parser.add_argument("--target", dest="target", help="设置测试目标，如'p1_legacy'或'assaultcube'")
     parser.add_argument("--mode", choices=["predefined", "generated", "batch"], 
                         default="predefined", help="测试模式：预定义/生成单个/批量生成")
     
@@ -207,12 +218,12 @@ if __name__ == "__main__":
     
     if args.mode == "predefined":
         print("运行预定义测试用例...")
-        result = run_predefined_tests()
+        result = run_predefined_tests(args.target)
     elif args.mode == "generated":
         print("生成并运行单个测试用例...")
-        result = run_generated_tests(api_key, args.requirement)
+        result = run_generated_tests(api_key, args.requirement, args.target)
     elif args.mode == "batch":
         print(f"生成并运行{args.count}个测试用例...")
-        result = run_batch_tests(api_key, args.requirement, args.count)
+        result = run_batch_tests(api_key, args.requirement, args.count, args.target)
     
     sys.exit(0 if result else 1)

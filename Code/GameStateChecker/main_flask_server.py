@@ -9,7 +9,12 @@ import sys
 # Initialize the Flask application
 app = Flask(__name__)
 
-logicLayer_inst = LogicLayer.LogicLayer()
+# 从环境变量获取测试目标，默认为 'assaultcube'
+target_name = os.getenv("GAMECHECK_TARGET", "assaultcube")
+print(f"[Flask] 使用测试目标: {target_name}")
+
+# 初始化 LogicLayer 实例，传递测试目标
+logicLayer_inst = LogicLayer.LogicLayer(target_name=target_name)
 
 @app.route('/index', methods=['GET', 'POST'])
 def index():
@@ -17,7 +22,6 @@ def index():
 
     """ # Transforms to a dictionary 
     return jsonify(username=g.user.username,
-                   email=g.user.email,
                    id=g.user.id)
     """
 
@@ -47,7 +51,7 @@ def check_visuals():
         response_pickled = jsonpickle.encode(res)
         return Response(response=response_pickled, status=200, mimetype="application/json")
     else:
-        raise  NotImplementedError("Not implemented")
+        raise NotImplementedError("Not implemented")
 
 # Test the results
 def testUI(context, requestFunc, requestExpectedAnswer):
@@ -79,7 +83,6 @@ def testUI(context, requestFunc, requestExpectedAnswer):
         res = logicLayer_inst.testWeaponCrossPresence(imgs, context, requestExpectedAnswer)
     elif requestFunc == "checkAmmoSyncText":
         res = logicLayer_inst.testAmmoTextInSync(imgs, context, requestExpectedAnswer)
-        pass
     else:
         raise NotImplementedError("Not implemented")
 
@@ -94,7 +97,6 @@ def check_sounds():
     # Pack the result and respond
     response = {'result': 0} 
     return response
-    pass
 
 # 只在直接运行时启动Flask服务器，作为模块导入时不启动
 if __name__ == '__main__':

@@ -6,13 +6,18 @@ import time
 import json
 
 class TestExecutor:
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, target=None):
         self.generator = TestGenerator(api_key)
         # 使用空列表作为command_args，避免Behave解析sys.argv
         self.config = Configuration(command_args=[])
         self.feature_dir = os.path.join(os.path.dirname(__file__), '../features')
         # 确保feature_dir目录存在
         os.makedirs(self.feature_dir, exist_ok=True)
+        # 保存测试目标
+        self.target = target
+        # 如果提供了target，设置环境变量
+        if self.target:
+            os.environ["GAMECHECK_TARGET"] = self.target
         
     def execute_from_requirement(self, requirement):
         """根据需求生成并执行单个测试用例"""
@@ -81,6 +86,10 @@ class TestExecutor:
         
         if generation_time:
             report["generation_time"] = generation_time
+        
+        # 添加测试目标信息
+        if self.target:
+            report["target"] = self.target
             
         report_path = os.path.join(os.path.dirname(__file__), '../reports')
         if not os.path.exists(report_path):
