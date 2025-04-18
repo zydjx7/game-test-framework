@@ -32,242 +32,280 @@ class VisionUtils:
         min_keypoints = 3     # 默认最小特征点数
 
     @staticmethod
-    def readTextFromPicture(srcImg, boundingBox, filter_type='hsv', context=None, 
-                           do_imgProcessing=True, debugEnabled=False, filename_suffix=""):
+    def readTextFromPicture(srcImg, boundingBox, filter_type='value', context=None, cv_params=None, do_imgProcessing=True, debugEnabled=False, filename_suffix="", debug_dir="debug"):
         """
-        从图像中读取文本
-        @param srcImg: 源图像
-        @param boundingBox: 边界框 [x, y, w, h]
+        从图片中读取文本(使用OCR)
+        支持HSV和Value两种过滤模式
+        @param srcImg: 原始图像
+        @param boundingBox: 边界框 [x, y, width, height]
         @param filter_type: 过滤类型，'hsv'或'value'
-        @param context: 上下文字典，包含过滤参数
+        @param context: 上下文参数
+        @param cv_params: 视觉参数，优先级高于context
         @param do_imgProcessing: 是否进行图像处理
         @param debugEnabled: 是否启用调试
-        @param filename_suffix: 调试文件名后缀，用于区分不同的ROI
+        @param filename_suffix: 调试文件名后缀，用于区分不同图像的调试输出
+        @param debug_dir: 调试图像保存目录
         @return: 识别的文本
         """
         try:
+            # 提取ROI区域
+            x, y, w, h = boundingBox
+            roi = srcImg[y:y+h, x:x+w] if y >= 0 and x >= 0 and y+h <= srcImg.shape[0] and x+w <= srcImg.shape[1] else srcImg
+            
+            if debugEnabled:
+                # 保存ROI区域进行调试
+                os.makedirs(debug_dir, exist_ok=True)
+                roi_filename = os.path.join(debug_dir, f"ammo_roi_{filename_suffix}.png")
+                cv2.imwrite(roi_filename, roi)
+                logger.debug(f"已保存ROI区域图像到 {roi_filename}")
+                
+            # 检查ROI是否为空
+            if roi is None or roi.size == 0:
+                logger.warning("ROI区域为空或无效，无法进行OCR识别")
+                return ""
+            
+            # 初始化参数
             if context is None:
                 context = {}
                 
-            # 提取ROI
-            x, y, w, h = boundingBox
-            roi = srcImg[y:y+h, x:x+w]
-            
-            if do_imgProcessing:
-                # 根据过滤类型进行不同处理
-                if filter_type == 'hsv':
-                    # 使用HSV颜色空间过滤 - AI-B建议的参数
-                    hsv_min = context.get("textColorValueInHSV_min", 0)
-                    hsv_max = context.get("textColorValueInHSV_max", 179)
-                    hsv_sat_max = context.get("hsv_sat_max", 60)  # 白色/灰白 → 饱和度低
-                    hsv_val_min = context.get("hsv_val_min", 200)  # 高亮度
-                    hsv_val_max = context.get("hsv_val_max", 255)
-                    
-                    # 转换到HSV空间
-                    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                    
-                    # 创建掩码 - 使用饱和度和亮度值过滤白色数字
-                    lower = np.array([hsv_min, 0, hsv_val_min])  # 饱和度最小为0
-                    upper = np.array([hsv_max, hsv_sat_max, hsv_val_max])
-                    mask = cv2.inRange(hsv, lower, upper)
-                    
-                    # 应用掩码
-                    result = cv2.bitwise_and(roi, roi, mask=mask)
-                    
-                    # 转换为灰度图
-                    gray = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
-                    
-                elif filter_type == 'value':
-                    # 使用亮度值过滤 - 针对AssaultCube的白色数字
-                    val_min = context.get("valueThresholdMin", 200)  # 默认值提高到200，更适合白色数字
-                    val_max = context.get("valueThresholdMax", 255)
-                    
-                    # 转换为灰度图
-                    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-                    
-                    # 根据亮度值创建掩码
-                    _, mask = cv2.threshold(gray, val_min, val_max, cv2.THRESH_BINARY)
-                    gray = mask  # 直接使用二值图像
-                else:
-                    # 默认转灰度
-                    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            # 获取过滤类型 - 优先使用 cv_params
+            if cv_params and 'ammo_filter_type' in cv_params:
+                filter_type = cv_params.get('ammo_filter_type')
                 
-                # 二值化
-                _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            else:
-                # 仅转为灰度，不做额外处理
-                binary = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            # 根据过滤类型选择处理方法
+            binary = None
             
-            # 图像预处理增强
-            # 先进行膨胀操作，帮助连接数字部分，填充可能的空洞（AI-B建议）
-            kernel = np.ones((3,3), np.uint8)  # 使用3x3内核
-            binary = cv2.dilate(binary, kernel, iterations=1)
+            if filter_type == 'hsv':
+                # 从 cv_params 或 context 获取 HSV 参数
+                hue_min = cv_params.get('ammo_hsv_hue_min', context.get('textColorValueInHSV_min', 0))
+                hue_max = cv_params.get('ammo_hsv_hue_max', context.get('textColorValueInHSV_max', 179))
+                sat_min = cv_params.get('ammo_hsv_sat_min', context.get('hsv_sat_min', 0))
+                sat_max = cv_params.get('ammo_hsv_sat_max', context.get('hsv_sat_max', 50))
+                val_min = cv_params.get('ammo_hsv_val_min', context.get('hsv_val_min', 180))
+                val_max = cv_params.get('ammo_hsv_val_max', context.get('hsv_val_max', 255))
+                
+                # HSV颜色空间过滤
+                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+                
+                # 创建HSV范围
+                lower = np.array([hue_min, sat_min, val_min])
+                upper = np.array([hue_max, sat_max, val_max])
+                
+                # 应用HSV过滤
+                binary = cv2.inRange(hsv, lower, upper)
+                
+                if debugEnabled:
+                    logger.debug(f"使用HSV过滤: H({hue_min}-{hue_max}), S({sat_min}-{sat_max}), V({val_min}-{val_max})")
+                    
+                    # 保存HSV通道图像用于调试
+                    h, s, v = cv2.split(hsv)
+                    cv2.imwrite(os.path.join(debug_dir, f"hsv_h_channel_{filename_suffix}.png"), h)
+                    cv2.imwrite(os.path.join(debug_dir, f"hsv_s_channel_{filename_suffix}.png"), s)
+                    cv2.imwrite(os.path.join(debug_dir, f"hsv_v_channel_{filename_suffix}.png"), v)
+                
+            else:  # 'value'模式(灰度处理)
+                # 从 cv_params 或 context 获取阈值参数
+                value_min = cv_params.get('ammo_value_threshold_min', context.get('valueThresholdMin', 150))
+                value_max = cv_params.get('ammo_value_threshold_max', context.get('valueThresholdMax', 255))
+                
+                # 转换为灰度图
+                gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+                
+                # 应用灰度阈值
+                _, binary = cv2.threshold(gray, value_min, value_max, cv2.THRESH_BINARY)
+                
+                if debugEnabled:
+                    logger.debug(f"使用Value过滤: ({value_min}-{value_max})")
+                    # 保存灰度图像用于调试
+                    cv2.imwrite(os.path.join(debug_dir, f"gray_{filename_suffix}.png"), gray)
             
-            # 然后进行闭运算清理噪点并连接断开的线段
-            binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+            # 应用图像处理
+            if do_imgProcessing and binary is not None:
+                # 保存原始二值化图像用于比较
+                if debugEnabled:
+                    cv2.imwrite(os.path.join(debug_dir, f"binary_pre_processing_{filename_suffix}.png"), binary)
+                
+                # 应用膨胀和闭操作使文字更连贯
+                kernel = np.ones((2, 2), np.uint8)
+                binary = cv2.dilate(binary, kernel, iterations=1)
+                binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+                
+                if debugEnabled:
+                    logger.debug("应用了形态学处理: 膨胀(2x2内核,1次迭代) + 闭操作(2x2内核,1次迭代)")
             
-            # OCR识别 - 使用PSM=8模式（AI-B建议）
-            # PSM=8: 将图像视为单个字符块，更适合识别单个数字
-            custom_config = r'--psm 8 --oem 3 -c tessedit_char_whitelist=0123456789'
+            if debugEnabled and binary is not None:
+                # 保存二值化图像(用于调试)
+                binary_filename = os.path.join(debug_dir, f"debug_binary_{filename_suffix}.png")
+                cv2.imwrite(binary_filename, binary)
+                logger.debug(f"已保存二值化图像到 {binary_filename}")
+            
+            # 检查二值图像是否为有效
+            if binary is None:
+                logger.error("二值化图像生成失败")
+                return ""
+            
+            # 设置Tesseract OCR选项 - PSM 8表示单字块模式
+            custom_config = r'--psm 8 -c tessedit_char_whitelist=0123456789'
+            
+            # 使用Tesseract进行OCR识别
             text = pytesseract.image_to_string(binary, config=custom_config).strip()
             
-            if debugEnabled:
-                logger.debug(f"OCR识别结果: '{text}', 过滤类型: {filter_type}")
-                # 保存调试图像
-                debug_dir = "debug"
-                os.makedirs(debug_dir, exist_ok=True)
-                
-                # 使用后缀区分不同的ROI调试图
-                suffix = filename_suffix if filename_suffix else ""
-                cv2.imwrite(os.path.join(debug_dir, f'debug_roi{suffix}.png'), roi)
-                cv2.imwrite(os.path.join(debug_dir, f'debug_binary{suffix}.png'), binary)
-                
-                # 如果有掩码，保存掩码
-                if 'mask' in locals():
-                    cv2.imwrite(os.path.join(debug_dir, f'debug_mask{suffix}.png'), mask)
-            
-            # 使用正则表达式提取数字，而不是简单过滤
+            # 删除所有非数字字符(包括句点、空格等)
             import re
-            clean_text = ''.join(re.findall(r'\d+', text))
-            return clean_text
+            text = re.sub(r'[^0-9]', '', text)
+            
+            if debugEnabled:
+                logger.info(f"OCR识别结果: '{text}' (过滤类型: {filter_type})")
+                
+            # 记录OCR结果到context（用于调试和结果传递）
+            if context is not None:
+                context["ocr_result"] = text
+                
+            return text
             
         except Exception as e:
-            logger.error(f"读取文本失败: {e}")
+            logger.error(f"OCR文本识别失败: {e}")
+            # 记录错误到context
+            if context is not None:
+                context["ocr_error"] = str(e)
             return ""
 
     @staticmethod
-    def matchTemplateImg(img_target, img_src, minKeypoints=3, lowe_ratio=0.75, 
-                        template_threshold=None, debugEnabled=False, return_details=False):
+    def matchTemplateImg(img_src, img_target, minKeypoints=6, useORB=False, useSIFT=True, debugEnabled=False, debug_dir="debug", filename_suffix=""):
         """
-        匹配模板图像 - 使用SIFT特征点匹配
+        使用特征点匹配(SIFT/ORB)和备选的模板匹配来比对图像
+        @param img_src: 源图像/模板
         @param img_target: 目标图像
-        @param img_src: 源图像(模板)
-        @param minKeypoints: 最小匹配点数
-        @param lowe_ratio: Lowe比率测试阈值
-        @param template_threshold: 模板匹配阈值
+        @param minKeypoints: 最小匹配特征点数量
+        @param useORB: 是否使用ORB特征
+        @param useSIFT: 是否使用SIFT特征
         @param debugEnabled: 是否启用调试
-        @param return_details: 是否返回详细匹配信息
-        @return: 布尔值(是否匹配成功)或包含详细信息的字典
+        @param debug_dir: 调试图像保存目录
+        @param filename_suffix: 调试文件名后缀，用于区分不同图像的调试输出
+        @return: 匹配的特征点列表、最小特征点要求和模板匹配相关系数
         """
         try:
-            # 使用默认值如果参数未提供
-            if template_threshold is None:
-                template_threshold = VisionUtils.cross_threshold
+            # 检查图片类型
+            if type(img_target) is not np.ndarray:
+                img_target = np.array(img_target)
+            if type(img_src) is not np.ndarray:
+                img_src = np.array(img_src)
                 
-            # 结果字典
-            result = {"matched": False, "method": "none", "score": 0.0}
-            
-            # 使用SIFT特征匹配
+            # 检查图像通道，转为灰度图
+            if len(img_src.shape) > 2:
+                img_src = cv2.cvtColor(img_src, cv2.COLOR_BGR2GRAY)
+            if len(img_target.shape) > 2:
+                img_target = cv2.cvtColor(img_target, cv2.COLOR_BGR2GRAY)
+                
+            # 创建SIFT检测器
             sift = cv2.SIFT_create()
+            
+            # 在图像中检测关键点和描述符
             kp1, des1 = sift.detectAndCompute(img_src, None)
             kp2, des2 = sift.detectAndCompute(img_target, None)
             
-            if des1 is None or des2 is None:
-                logger.warning("未能提取特征点描述子，回退到模板匹配")
-                # 如果SIFT失败，尝试使用模板匹配作为备选
-                template_result = VisionUtils.matchTemplateSimple(
-                    img_target, img_src, threshold=template_threshold, 
-                    debugEnabled=debugEnabled, return_details=return_details
-                )
-                
-                if return_details:
-                    result.update(template_result)
-                    return result
-                else:
-                    return template_result
-                
-            # FLANN参数
+            # 记录关键点信息
+            if debugEnabled:
+                logger.debug(f"SIFT特征检测: 模板图像有 {len(kp1) if kp1 else 0} 个关键点, 目标图像有 {len(kp2) if kp2 else 0} 个关键点")
+            
+            # 使用FLANN匹配器进行特征匹配
             FLANN_INDEX_KDTREE = 1
             index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
             search_params = dict(checks=50)
+            
             flann = cv2.FlannBasedMatcher(index_params, search_params)
             
-            try:
-                matches = flann.knnMatch(des1, des2, k=2)
-            except Exception as e:
-                logger.error(f"特征匹配失败: {e}")
-                # 如果knnMatch失败，尝试使用模板匹配作为备选
-                template_result = VisionUtils.matchTemplateSimple(
-                    img_target, img_src, threshold=template_threshold, 
-                    debugEnabled=debugEnabled, return_details=return_details
-                )
-                
-                if return_details:
-                    result.update(template_result)
-                    return result
-                else:
-                    return template_result
-            
-            # 应用Lowe's ratio测试
             good_matches = []
-            for m, n in matches:
-                if m.distance < lowe_ratio * n.distance:  # 使用传入的lowe_ratio
-                    good_matches.append(m)
             
+            # 设置默认模板匹配相关性得分
+            max_val = 0.0
+            
+            # 确保检测到足够的特征点
+            if des1 is not None and des2 is not None and len(des1) > 0 and len(des2) > 0:
+                try:
+                    # 进行KNN匹配
+                    matches = flann.knnMatch(des1, des2, k=2)
+                    
+                    # 应用Lowe过滤条件
+                    lowe_ratio = 0.7  # Lowe推荐的比例
+                    for m, n in matches:
+                        if m.distance < lowe_ratio * n.distance:
+                            good_matches.append(m)
+                    
+                    if debugEnabled:
+                        logger.debug(f"SIFT找到 {len(matches)} 对匹配, 应用Lowe比率({lowe_ratio})过滤后剩余 {len(good_matches)} 个好的匹配")
+                        logger.debug(f"与目标值比较: {len(good_matches)}/{minKeypoints} 个匹配点, 要求比例: {lowe_ratio}")
+                    
+                except Exception as e:
+                    logger.warning(f"特征匹配过程中出错: {e}")
+            
+            # 保存匹配结果图像（如果启用调试）
             if debugEnabled:
-                logger.debug(f"找到 {len(good_matches)} 个好的匹配点，需要 {minKeypoints} 个")
-                # 创建匹配结果可视化
-                debug_dir = "debug"
+                # 创建调试目录
                 os.makedirs(debug_dir, exist_ok=True)
                 
-                # 绘制匹配结果
-                img_matches = cv2.drawMatches(
-                    img_src, kp1, 
-                    img_target, kp2, 
-                    good_matches, None, 
-                    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
-                )
-                cv2.imwrite(os.path.join(debug_dir, 'sift_matches.png'), img_matches)
+                # 保存匹配结果图像
+                if len(good_matches) > 0:
+                    img_matches = cv2.drawMatches(img_src, kp1, img_target, kp2, good_matches[:min(10, len(good_matches))], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                    
+                    # 使用文件名后缀区分不同的匹配图像
+                    suffix = f"_{filename_suffix}" if filename_suffix else ""
+                    match_path = os.path.join(debug_dir, f"sift_matches{suffix}.png")
+                    cv2.imwrite(match_path, img_matches)
+                    logger.debug(f"已保存SIFT匹配可视化图像到 {match_path}")
+                else:
+                    logger.debug("未找到SIFT特征匹配，无法生成匹配图像")
                 
-            # 检查是否有足够的匹配点
+            # 无论如何都进行模板匹配，以确保有相关性得分可用
+            # 进行模板匹配
+            template_result = cv2.matchTemplate(img_target, img_src, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(template_result)
+            
+            if len(good_matches) < minKeypoints:
+                logger.debug(f"特征点匹配不足({len(good_matches)}/{minKeypoints})，使用模板匹配备选，相关性得分:{max_val:.3f}")
+            else:
+                logger.debug(f"特征点匹配充足({len(good_matches)}/{minKeypoints})，额外计算模板相关性得分:{max_val:.3f}")
+                
+            # 保存模板匹配结果
+            if debugEnabled:
+                # 保存相关性得分图
+                suffix = f"_{filename_suffix}" if filename_suffix else ""
+                corr_path = os.path.join(debug_dir, f"template_correlation{suffix}.png")
+                cv2.imwrite(corr_path, template_result * 255)
+                
+                # 在目标图像上绘制最佳匹配位置
+                h, w = img_src.shape
+                top_left = max_loc
+                bottom_right = (top_left[0] + w, top_left[1] + h)
+                result_img = cv2.cvtColor(img_target.copy(), cv2.COLOR_GRAY2BGR) if len(img_target.shape) < 3 else img_target.copy()
+                cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
+                pos_path = os.path.join(debug_dir, f"template_match_position{suffix}.png")
+                cv2.imwrite(pos_path, result_img)
+                
+                logger.debug(f"已保存模板匹配结果图像到 {debug_dir} 目录")
+            
             matched = len(good_matches) >= minKeypoints
+            logger.info(f"特征点匹配结果: {len(good_matches)}/{minKeypoints}, 匹配状态: {matched}, 模板相关性得分: {max_val:.3f}")
             
-            # 更新结果信息
-            result["matched"] = matched
-            result["method"] = "sift"
-            result["score"] = len(good_matches)  # 使用匹配点数量作为分数
+            # 返回三个值：好的匹配点、最小特征点要求和模板匹配相关系数
+            return good_matches, minKeypoints, max_val
             
-            if not matched and debugEnabled:
-                logger.debug(f"SIFT匹配失败(找到{len(good_matches)}点<{minKeypoints}点)，尝试使用模板匹配")
-                # SIFT匹配失败，尝试使用模板匹配
-                template_result = VisionUtils.matchTemplateSimple(
-                    img_target, img_src, threshold=template_threshold, 
-                    debugEnabled=debugEnabled, return_details=True
-                )
-                
-                # 只有当模板匹配成功时才更新结果
-                if template_result.get("matched", False):
-                    result.update(template_result)
-            
-            if return_details:
-                return result
-            else:
-                return result["matched"]
-                
         except Exception as e:
-            logger.error(f"模板匹配失败: {e}")
-            # 出错时尝试备选方法
-            template_result = VisionUtils.matchTemplateSimple(
-                img_target, img_src, threshold=template_threshold, 
-                debugEnabled=debugEnabled, return_details=return_details
-            )
-            
-            if return_details:
-                result.update(template_result)
-                return result
-            else:
-                return template_result
-    
+            logger.error(f"模板匹配过程中出错: {e}")
+            return [], minKeypoints, 0.0
+
     @staticmethod
     def matchTemplateSimple(img_target, img_src, threshold=None, debugEnabled=False, 
-                           return_details=False) -> Union[bool, Dict]:
+                           debug_dir="debug", return_details=False, filename_suffix="") -> Union[bool, Dict]:
         """
         简单的模板匹配方法，作为SIFT的备选
         @param img_target: 目标图像
         @param img_src: 源图像(模板)
         @param threshold: 匹配阈值
         @param debugEnabled: 是否启用调试
+        @param debug_dir: 调试图像保存目录
         @param return_details: 是否返回详细匹配信息
+        @param filename_suffix: 调试文件名后缀，用于区分不同图像的调试输出
         @return: 布尔值(是否匹配成功)或包含详细信息的字典
         """
         try:
@@ -289,41 +327,63 @@ class VisionUtils:
                 img_target_gray = img_target
             
             # 确保模板尺寸小于目标图像
-            if img_src_gray.shape[0] > img_target_gray.shape[0] and img_src_gray.shape[1] > img_target_gray.shape[1]:
-                # 模板比目标图像小，进行模板匹配
-                result_mat = cv2.matchTemplate(img_target_gray, img_src_gray, cv2.TM_CCOEFF_NORMED)
-            else:
+            resized_template = None
+            if img_src_gray.shape[0] > img_target_gray.shape[0] or img_src_gray.shape[1] > img_target_gray.shape[1]:
                 # 模板比目标图像大，需要调整大小
                 scale = 0.5  # 缩放比例
+                logger.debug(f"模板({img_src_gray.shape})大于目标({img_target_gray.shape})，应用缩放: {scale}")
                 resized_template = cv2.resize(img_src_gray, None, fx=scale, fy=scale)
                 result_mat = cv2.matchTemplate(img_target_gray, resized_template, cv2.TM_CCOEFF_NORMED)
+            else:
+                # 模板比目标图像小，进行模板匹配
+                logger.debug(f"模板({img_src_gray.shape})小于或等于目标({img_target_gray.shape})，直接匹配")
+                result_mat = cv2.matchTemplate(img_target_gray, img_src_gray, cv2.TM_CCOEFF_NORMED)
             
             # 获取最大匹配值及位置
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result_mat)
             
+            # 进行结果判断
+            matched = max_val >= threshold
+            
+            # 添加详细调试日志
             if debugEnabled:
-                logger.debug(f"模板匹配最大值: {max_val:.4f}, 阈值: {threshold:.4f}")
+                logger.debug(f"模板匹配最大值: {max_val:.4f}, 阈值: {threshold:.4f}, 匹配状态: {matched}")
                 
                 # 保存匹配结果可视化
-                debug_dir = "debug"
                 os.makedirs(debug_dir, exist_ok=True)
                 
                 # 绘制匹配结果
-                h, w = img_src_gray.shape
+                template_to_use = resized_template if resized_template is not None else img_src_gray
+                h, w = template_to_use.shape[:2]
                 top_left = max_loc
                 bottom_right = (top_left[0] + w, top_left[1] + h)
                 
                 # 在目标图像上画矩形标记匹配位置
-                result_img = cv2.cvtColor(img_target_gray.copy(), cv2.COLOR_GRAY2BGR)
-                cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
+                result_img = cv2.cvtColor(img_target_gray.copy(), cv2.COLOR_GRAY2BGR) if len(img_target_gray.shape) < 3 else img_target_gray.copy()
+                cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0) if matched else (0, 0, 255), 2)
                 
-                cv2.imwrite(os.path.join(debug_dir, 'template_match.png'), result_img)
-                cv2.imwrite(os.path.join(debug_dir, 'template_correlation.png'), (result_mat * 255).astype(np.uint8))
+                # 添加匹配分数文字
+                text = f"Score: {max_val:.2f}, Threshold: {threshold:.2f}"
+                cv2.putText(result_img, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if matched else (0, 0, 255), 2)
+                
+                # 保存结果图像，添加文件名后缀以区分不同测试
+                suffix = f"_{filename_suffix}" if filename_suffix else ""
+                match_result_path = os.path.join(debug_dir, f'template_match{suffix}.png')
+                corr_result_path = os.path.join(debug_dir, f'template_correlation{suffix}.png')
+                
+                cv2.imwrite(match_result_path, result_img)
+                cv2.imwrite(corr_result_path, (result_mat * 255).astype(np.uint8))
+                
+                logger.debug(f"已保存模板匹配结果图像到 {match_result_path}")
+                logger.debug(f"已保存相关性分布图像到 {corr_result_path}")
             
             # 更新结果信息
-            matched = max_val >= threshold
             result["matched"] = matched
             result["score"] = max_val
+            result["threshold"] = threshold
+            
+            # 日志记录匹配结果
+            logger.info(f"模板匹配结果: 得分={max_val:.4f}, 阈值={threshold:.4f}, 匹配状态={matched}")
             
             if return_details:
                 return result
@@ -336,7 +396,7 @@ class VisionUtils:
                 return {"matched": False, "method": "error", "score": 0.0, "error": str(e)}
             else:
                 return False
-    
+
     @staticmethod
     def getBinaryImage(srcImg, filter_type='hsv', context=None):
         """

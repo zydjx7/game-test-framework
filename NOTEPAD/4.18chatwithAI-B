@@ -1,0 +1,185 @@
+AI-B:下面把 **debug _binary.png**、**ammo ROI** 和准星两条检测链的症状逐条“拆解”，再给出最可能的根因与改进方案。阅读顺序 = 先结论、再原理、最后可直接对 Copilot 下达的 Todo‑List。  
+（所有结论都基于你刚上传的四张 ROI / 调试图，以及 config.yaml 里当前的阈值 set）
+
+---
+
+## 1 弹药 OCR 为何几乎全军覆没？
+
+| 现象 | 调试图 | 直接含义 | 根因推断 |
+|----|----|----|----|
+| **debug_binary.png 几乎全黑，只剩 1 个白点**（79 × 49，仅 0.026 % 像素为白） |  | **阈值过滤把绝大部分数字“过滤掉”了** | - HSV/V 通道阈值过窄：`ammo_value_threshold_min/max = 129/130` 只允许亮度=129–130 的像素通过，但 AssaultCube 的白色数字 V 值≈ 240–255。<br>- ROI 先被缩放后再二值，像素值被插值稀释，进一步掉进阈值“缝隙”。 |
+| **ammo_roi_unknown.png 中同时包住了 clip(9) + total(40)** |  | OCR 的输入其实是 **“9 40”**（或者 “9/40”），但你只比对 clip=9 | - Tesseract 默认 `psm 7` 识别“整行”，返回 “940” 或 “9 40”；后续 `int()` 转换失败 → 判 FAIL<br>- ROI 宽度较大 → 二值化后背景纹理也被卷进去，干扰形态学处理 |
+
+### 原理 & 代码触发点
+
+1. `readTextFromPicture` 在 `'value'` 模式下  
+   ```python
+   cv.inRange(gray, min, max)
+   ```  
+   ——灰阶直接阈值；当 `min/max` 区间太窄就只剩零星白点。  
+2. 二值图再 `morphologyEx`，kernel=(5, 5)；有了上一条“白点”后，形态学操作基本把唯一白点也腐蚀掉，Tesseract 吃到的是纯黑图 → 返回空串。  
+3. ROI 大小 = `[877, 1323, 128, 89]`，能同时看到 “弹夹 / 备弹”，OCR 成功后字符串得先 `split('/')` 再 `int()`，否则必错。
+
+### 立刻可验证的修补
+
+1. **阈值先粗后细**  
+   ```yaml
+   ammo_filter_type: hsv
+   ammo_hsv_sat_max: 60      # 白色/灰白 → 饱和度低
+   ammo_hsv_val_min: 200
+   ammo_hsv_val_max: 255
+   ```
+   ‑> 重跑；调试图理想状态应只剩白色数字（黑描边会变灰，被剔除）。
+2. **把 ROI 切两半**  
+   ```python
+   x,y,w,h = ammo_bbox
+   clip_roi  = roi[:, :w//2]   # 取左半（弹夹）
+   total_roi = roi[:, w//2:]   # 右半（备弹，可暂时忽略）
+   ```  
+   然后对 `clip_roi` 做 OCR，比对 `expectedAnswer["intResult"]`。  
+   > **好处**：① 避免 “9 40” 拼一起；② 缩小背景面积，提高阈值鲁棒性。
+3. **Tesseract 专用配置**  
+   ```python
+   custom = r"-c tessedit_char_whitelist=0123456789 --psm 8"
+   ```  
+   `psm 8` = 单字块，容忍左右仍有部分背景。
+4. **缩放因子校验**  
+   你的调试日志已经按分辨率比例缩 bbox，但建议：  
+   ```python
+   scale_x = img.shape[1] / 2560
+   scale_y = img.shape[0] / 1440
+   x,y,w,h = [int(round(v*scale_x)) for v in (bx,by,bw,bh)]  # y用 scale_y
+   ```
+
+---
+
+## 2 准星检测：为什么标准/匕首准星找不到 Keypoints？
+
+| 现象 | 日志片段 | 推断 |
+|----|----|----|
+| `找到 0 个好的匹配点，需要 1 个` | `minKeypoints` 在 config 中是 3，但日志硬写 1 | - `min_keypoints` 参数 **没有真正传递** 进 `matchTemplateImg`。<br>- SIFT 对像素很少的白色“十字 + 空心圆”不稳定；再加上中心准星透明度低，Keypoints 直接=0。 |
+| 备选模板匹配得分≈ 0.40 < 阈值 0.70 | `template_threshold: 0.7000` | 模板与待测 ROI 的缩放或亚像素偏移导致相关系数低。 |
+
+### 可行改进路线
+
+1. **确保 `min_keypoints` 已生效**  
+   ```python
+   good, min_kp = self.matchTemplateImg(..., min_keypoints=cv_params["min_keypoints"])
+   logger.debug(f"GOOD={len(good)}, need={min_kp}")
+   ```
+2. **降阈值 + 试 ORB**  
+   - 先把 `template_threshold` 调到 0.55，看标准准星能否 PASS；  
+   - 在 `config.yaml` 加 `use_orb: true` → ORB + Hamming 距离通常在小目标上比 SIFT 稳。
+3. **多尺度模板**  
+   以 `cross_normal.png` 为模板，额外生成 90 %、110 % 两个尺寸，循环 `cv.matchTemplate` 取最大得分。
+
+---
+
+## 3 其他可能踩坑点快速清单
+
+| 类别 | 现象/风险 | 检查点 |
+|------|-----------|-------|
+| **ROI 本身错误** | BBox 高度=89，但某些截图里数字只有 ~70 px 高 | ROI 下方无用背景 → 阈值时把沙地纹理留下来 |
+| **游戏光照** | 不同地图光照改变数字灰度 | HSV V 通道阈值请给出 **200–255** 比纯数值更稳 |
+| **形态学 kernel 过大** | 腐蚀 + 膨胀把小数字“抹”没 | 试 `(3,3)` 或完全去掉形态学，看调试图 |
+| **Tesseract 语言包** | 未安装 eng.traineddata 导致空结果 | `pytesseract.get_languages(config='')` 检查 |
+| **字体镂空** | AssaultCube 数字白中带洞 → 背景渗进阈值 | 可以先 `cv2.threshold` 取高亮，再 `cv2.dilate` 2 px 让洞闭合 |
+
+---
+
+## 4 直接可给 Copilot / 下一轮 commit 的 Todo‑List
+
+> **Task‑Ammo‑OCR**  
+> 1. 将 `ammo_filter_type` 改为 **`hsv`**，并把 `ammo_hsv_sat_max = 60`, `ammo_hsv_val_min = 200`, `ammo_hsv_val_max = 255` 写进 config。  
+> 2. 在 `LogicLayer.testAmmoTextInSync` 中，把 ROI 切成左右两半，只对左半做 OCR。  
+> 3. `readTextFromPicture` 内部：阈值后先 `cv2.dilate(…, kernel=(3,3))`，再调用 `pytesseract`, `--psm 8`.  
+> 4. 调试输出 `debug_binary_<origName>_clip.png`，确认数字轮廓完整。
+
+> **Task‑Crosshair**  
+> 1. 在 `VisionUtils.matchTemplateImg` 添加参数 `use_orb`，配置可切换 ORB。  
+> 2. 传递并记录 `min_keypoints`，确保日志输出需要的真实值。  
+> 3. 在模板匹配备份逻辑里，阈值先试 0.55；如还不行，再尝试多尺度模板字典。
+
+---
+
+### 结语
+
+- **你的怀疑（ROI 同时包含 10/40）非常关键**——即便阈值完全正确，这也会让比对逻辑天然失败。  
+- debug _binary 几乎纯黑＝阈值策略本身失效；先把像素“留住”再谈 OCR。  
+- 准星链路先把参数传对，再考虑算法（ORB / 多尺度）或降阈值。  
+- 这些改动都集中在 VisionUtils 层，不会影响 LLM‑Gherkin 流程，适合先在静态截图里迭代验证。
+
+动手调一轮看看新的 `debug_binary_*.png` 是否已经能把数字完整地“刷白”，有结果随时贴图！
+
+我：关于你的这个回答，我有一点疑问：ROI 大小 = [877, 1323, 128, 89]，能同时看到 “弹夹 / 备弹”，OCR 成功后字符串得先 split('/') 再 int()，否则必错。这里我得纠正一下，如图所示，其实并不是弹夹 / 备弹的格式，我当时这么说只是便于你理解，其实在游戏的图像中，以弹夹9，备弹40为例子的话，就是如图所示的左边一个大9，右边上方是一个长度只有9一半的40。这样的话，OCR 成功后字符串仍然得先 split('/') 再 int()吗？还是需要转换一下形式？还是我没理解你的意思？这里的 split('/')代表什么？
+
+
+AI-B：抱歉我之前用 “10/40” 的 `/` 做比方，让你产生了“必须 split('/')” 的误解。**AssaultCube 的弹药 HUD 里确实没有斜杠**，而是——
+
+```
+╔══════════════╗
+║  9      40   ║   ← 左侧是弹夹数（clip），右上是备弹（total）
+╚══════════════╝
+```
+
+### 1 OCR 可能产出的三类字符串
+
+| ROI 包含内容 | Tesseract 常见输出 | 解析思路 |
+|--------------|------------------|----------|
+| **只裁剪左半 (推荐)**<br>→ 只有 “9” | `"9"` | 直接 `int(text)` |
+| **左右都裁剪进了 ROI**，数字之间有 2‑3 px 空白 | `"9 40"`（带空格）<br>或 `"940"`（黏连） | - 用 **正则** `re.findall(r'\d+')` 抓出所有数字串<br>- 第 1 个元素就是弹夹数 |
+| **极端情况**：阈值没分离干净，边缘残影 | `"9O"`、`"9.40"` … | 同样用 `re.findall`，过滤非数字字符 |
+
+> `split('/')` 只适用于真的有字符 “/” 把两组数字分开的游戏（比如 CS:GO 或者 Valorant）。AssaultCube HUD 没这符号，就不需要 `split('/')`。
+
+### 2 推荐的解析代码（示例）
+
+```python
+import re
+
+def parse_clip(text):
+    """
+    text: OCR 原始输出，例如 '9', '9 40', '940', '9O'
+    return: clip 数字或 None
+    """
+    # 提取连续数字串
+    nums = re.findall(r'\d+', text)
+    if not nums:
+        return None
+    # 默认取第 1 个串作为弹夹数
+    return int(nums[0])
+
+# 用例
+for s in ['9', '9 40', '940', '9O']:
+    print(s, '->', parse_clip(s))
+```
+
+输出
+
+```
+9   -> 9
+9 40 -> 9
+940  -> 9          # 黏连也能拆
+9O  -> 9
+```
+
+### 3 更稳的做法：物理上把 ROI“切”两半
+
+在 `testAmmoTextInSync` 里：
+
+```python
+x, y, w, h = ammo_bbox
+clip_roi  = full_roi[:, :w//2]      # 取左半
+# total_roi = full_roi[:, w//2:]    # 右半以后想用再 OCR
+
+ocr_text = readTextFromPicture(clip_roi, cv_params)
+clip_val = parse_clip(ocr_text)
+```
+
+这样就彻底避免 “9 40/940” 的歧义，后续只需把 `clip_val` 跟 `expectedAnswer["intResult"]` 精确比对即可。
+
+---
+
+**总结**：AssaultCube 没有 “/”，所以不需要 `split('/')`。  
+- **最简单**：裁剪左半 ROI → OCR → `int()`。  
+- **若仍想一次裁两个数字**：`re.findall(r'\d+')` 把文本里的数字串全部拿出来，取第 1 个就是弹夹数。

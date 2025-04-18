@@ -121,7 +121,8 @@ class LogicLayer:
                                context: Dict[any, any],
                                expectedAnswer: Dict[any, any],
                                cv_params=None,
-                               debugEnabled=False) -> bool:
+                               debugEnabled=False,
+                               debug_dir=None) -> bool:
         """
         测试武器准星是否存在
         @param screenshots: 截图列表
@@ -129,6 +130,7 @@ class LogicLayer:
         @param expectedAnswer: 期望的答案
         @param cv_params: 视觉参数字典，优先级高于默认值
         @param debugEnabled: 是否启用调试
+        @param debug_dir: 调试图像保存目录
         @return: bool - 是否检测到准星
         """
         try:
@@ -187,32 +189,42 @@ class LogicLayer:
             if debugEnabled:
                 logger.debug(f"提取ROI区域: 中心({cx},{cy}), 大小({x2-x1}x{y2-y1}), " +
                              f"使用{'固定ROI大小' if cv_params.get('roi_size') else '动态ROI系数'}")
-                debug_dir = os.path.join(self.base_path, "debug")
-                os.makedirs(debug_dir, exist_ok=True)
-                cv2.imwrite(os.path.join(debug_dir, 'cross_roi.png'), roi_gray)
+                
+                # 使用传入的调试目录保存ROI图像
+                debug_save_dir = debug_dir if debug_dir else os.path.join(self.base_path, "debug")
+                os.makedirs(debug_save_dir, exist_ok=True)
+                
+                # 构造文件名后缀
+                filename_suffix = ""
+                screenshot_path = context.get("screenshotFile", "")
+                if screenshot_path:
+                    filename_suffix = os.path.splitext(os.path.basename(screenshot_path))[0]
+                else:
+                    filename_suffix = f"img_{int(time.time())}"
+                
+                cv2.imwrite(os.path.join(debug_save_dir, f'cross_roi_{filename_suffix}.png'), roi_gray)
+                logger.debug(f"已保存准星ROI区域图像: {os.path.join(debug_save_dir, f'cross_roi_{filename_suffix}.png')}")
             
             min_keypoints = cv_params.get('min_keypoints', 3)
             lowe_ratio = cv_params.get('lowe_ratio', 0.75)
             template_threshold = cv_params.get('template_threshold', 0.7)  # 降低阈值为0.7
             
-            # 使用return_details参数获取匹配详细信息
-            match_details = VisionUtils.matchTemplateImg(
-                img_target=roi_gray,
+            # 使用正确的参数名（minKeypoints 而不是 min_keypoints）并传递调试目录
+            good_matches, min_keypoints_required = VisionUtils.matchTemplateImg(
                 img_src=self.templateImg_weaponCross,
-                min_keypoints=min_keypoints,
-                lowe_ratio=lowe_ratio,
-                template_threshold=template_threshold,
-                debug=debugEnabled,
-                return_details=True  # 返回详细信息
+                img_target=roi_gray,
+                minKeypoints=min_keypoints,
+                useORB=False,
+                useSIFT=True,
+                debugEnabled=debugEnabled,
+                debug_dir=debug_dir if debug_dir else os.path.join(self.base_path, "debug")
             )
             
-            # 获取匹配结果
-            isMatching = match_details["matched"]
+            # 检查匹配结果
+            isMatching = len(good_matches) >= min_keypoints_required
             
             if debugEnabled:
-                match_method = match_details.get("method", "unknown")
-                match_score = match_details.get("score", 0.0)
-                logger.debug(f"准星匹配结果: {isMatching}, 方法: {match_method}, 分数: {match_score:.4f}")
+                logger.debug(f"准星匹配结果: {isMatching}, 找到特征点: {len(good_matches)}/{min_keypoints_required}")
                 
             # 直接返回匹配结果，不再与期望值比较
             return isMatching
@@ -225,171 +237,93 @@ class LogicLayer:
                           context: Dict[any, any],
                           expectedAnswer: Dict[any, any],
                           cv_params=None,
-                          debugEnabled=False) -> bool:
+                          debugEnabled=False,
+                          debug_dir=None) -> bool:
         """
         测试弹药文本同步
         @param screenshots: 截图列表
         @param context: 上下文信息
         @param expectedAnswer: 期望的答案
-        @param cv_params: 视觉参数字典，优先级高于默认值
+        @param cv_params: 视觉参数字典
         @param debugEnabled: 是否启用调试
+        @param debug_dir: 调试图像保存目录
+        @return: bool - 弹药文本是否同步
         """
         try:
+            # 提取预期弹药数
+            expected_ammo = int(expectedAnswer.get("intResult", -1))
+            logger.info(f"预期弹药数: {expected_ammo}")
+            
+            if expected_ammo < 0:
+                logger.error("无效的预期弹药数")
+                return False
+                
+            # 截图判空
             if not screenshots or len(screenshots) == 0:
-                logger.error("没有提供截图")
-                return False
-            
-            # 使用提供的cv_params或默认配置
-            if cv_params is None:
-                cv_params = self.target_config.get('cv_params', {})
-                
-            # 检查是否有弹药显示区域
-            if not context.get('bbox') and not cv_params.get('ammo_bbox'):
-                logger.error("未提供弹药显示区域")
+                logger.error("未提供截图")
                 return False
                 
-            logger.debug(f"开始识别弹药文本，期望值: {expectedAnswer.get('intResult')}")
+            screenshot = screenshots[0]
             
-            # 获取图像尺寸并动态调整bbox
-            img = screenshots[0]
-            img_height, img_width = img.shape[:2]
+            # 获取YAML文件中的视觉参数
+            yaml_cv_params = self.get_target_specific_param("ammo_ocr_params", {})
             
-            # 优先使用context中的bbox，如果没有则使用配置中的bbox
-            # 防止上下文污染：创建bbox的副本而不是直接修改context
-            orig_bbox = context.get("bbox", cv_params.get('ammo_bbox'))
-            bbox_adjusted = orig_bbox.copy() if isinstance(orig_bbox, list) else list(orig_bbox)
-            
-            # 如果图像尺寸与预期不同，动态调整bbox
-            # 修正：原始bbox是基于2560x1440分辨率的
-            if img_width != 2560 or img_height != 1440:
-                scale_x = img_width / 2560
-                scale_y = img_height / 1440
+            # 如果指定了cv_params，则覆盖默认值
+            if cv_params:
+                yaml_cv_params.update(cv_params)
                 
-                # 缩放bbox
-                bbox_adjusted = [
-                    int(orig_bbox[0] * scale_x),
-                    int(orig_bbox[1] * scale_y),
-                    int(orig_bbox[2] * scale_x),
-                    int(orig_bbox[3] * scale_y)
-                ]
-                
-                logger.debug(f"原始bbox: {orig_bbox}, 调整后bbox: {bbox_adjusted} (图像尺寸: {img_width}x{img_height})")
+            # 从配置获取弹药区域(如果有)
+            roi_rect = yaml_cv_params.get("roi_rect")
             
-            # 将调整后的bbox保存到context中
-            context["bbox"] = bbox_adjusted
+            # 获取过滤器类型
+            filter_type = yaml_cv_params.get("filter_type", "hsv")
             
-            # 获取bbox坐标并确保在图像边界内
-            x, y, w, h = map(int, bbox_adjusted)
-            x = max(0, x)
-            y = max(0, y)
-            w = min(w, img_width - x)
-            h = min(h, img_height - y)
+            # 构建文件名后缀用于调试
+            filename_suffix = ""
+            screenshot_path = context.get("screenshotFile", "")
+            if screenshot_path:
+                filename_suffix = os.path.splitext(os.path.basename(screenshot_path))[0]
+            else:
+                filename_suffix = f"img_{int(time.time())}"
             
-            # 检查裁剪后宽度或高度是否非正
-            if w <= 0 or h <= 0:
-                logger.error(f"无效的BBox尺寸导致无法裁剪ROI: x={x}, y={y}, w={w}, h={h} (图像尺寸: {img_width}x{img_height})")
-                return False
-                
-            # 更新context中的bbox为有效值
-            context["bbox"] = [x, y, w, h]
-            
-            # 提取完整ROI
-            full_roi = img[y:y+h, x:x+w]
-            
-            # 根据AI-B的建议，只使用左半部分ROI进行弹药识别（弹夹部分）
-            clip_width = w // 2  # 左半宽度
-            clip_roi = full_roi[:, :clip_width]
-            
-            # 创建一个新的bbox仅用于左半部分
-            clip_bbox = [x, y, clip_width, h]
-            
-            # 保存ROI区域进行调试
-            if debugEnabled:
-                debug_dir = "debug"
-                os.makedirs(debug_dir, exist_ok=True)
-                
-                # 获取图像名称用于区分调试输出
-                image_name = "unknown"
-                if context.get("image_path"):
-                    image_name = os.path.basename(context.get("image_path"))
-                else:
-                    # 尝试获取时间戳作为唯一标识
-                    image_name = f"img_{int(time.time())}"
-                
-                # 保存完整ROI和左半ROI
-                cv2.imwrite(os.path.join(debug_dir, f"ammo_roi_full_{image_name}.png"), full_roi)
-                cv2.imwrite(os.path.join(debug_dir, f"ammo_roi_clip_{image_name}.png"), clip_roi)
-                logger.debug(f"保存弹药ROI区域: 完整({w}x{h})和左半({clip_width}x{h})")
-            
-            # 从参数获取滤波方式
-            filter_type = cv_params.get('ammo_filter_type', 'hsv')
-            
-            # 创建上下文副本，避免修改原始上下文
-            clip_context = context.copy()
-            
-            # 根据滤波类型设置参数
-            if filter_type == 'hsv':
-                # HSV过滤参数 - 根据AI-B建议调整
-                clip_context.update({
-                    "textColorValueInHSV_min": cv_params.get('ammo_hsv_hue_min', 0),
-                    "textColorValueInHSV_max": cv_params.get('ammo_hsv_hue_max', 179),
-                    "hsv_sat_max": cv_params.get('ammo_hsv_sat_max', 60),  # 白色数字饱和度低
-                    "hsv_val_min": cv_params.get('ammo_hsv_val_min', 200), # 高亮度值
-                    "hsv_val_max": cv_params.get('ammo_hsv_val_max', 255)
-                })
-            elif filter_type == 'value':
-                # 亮度过滤参数 - 根据AI-B建议调整
-                clip_context.update({
-                    "valueThresholdMin": cv_params.get('ammo_value_threshold_min', 150),  # 修改默认值为150，与V1428一致
-                    "valueThresholdMax": cv_params.get('ammo_value_threshold_max', 255)
-                })
-            
-            # 使用左半部分进行OCR识别
+            # 使用VisionUtils读取文本
+            # 将调试目录传递给OCR函数
             ocr_text = VisionUtils.readTextFromPicture(
-                image=img, 
-                boundingBox=clip_bbox,
-                filter_type=filter_type,
-                context=clip_context,
-                do_imgProcessing=True,
-                debugEnabled=debugEnabled,
-                filename_suffix=f"_clip_{image_name}" if 'image_name' in locals() else "_clip"
+                screenshot, 
+                roi_rect, 
+                filter_type, 
+                yaml_cv_params, 
+                debugEnabled, 
+                filename_suffix, 
+                debug_dir
             )
             
-            logger.debug(f"OCR原始结果: '{ocr_text}'")
+            # 将OCR结果保存到context中以便在测试循环中使用
+            context["ocr_result"] = ocr_text
             
-            # 使用正则表达式提取所有数字串
-            import re
-            res_clean = re.findall(r'\d+', ocr_text)
+            logger.info(f"OCR识别文本: '{ocr_text}'")
             
-            if res_clean:
-                try:
-                    # 取第一个匹配的数字串作为弹夹数
-                    res_int = int(res_clean[0])
-                    logger.info(f"识别到的弹夹数: {res_int} (从文本 '{ocr_text}' 中提取的数字: {res_clean})")
-                    
-                    # 与预期值比较
-                    is_match = expectedAnswer.get("intResult") == res_int
-                    logger.info(f"弹药数匹配结果: 期望={expectedAnswer.get('intResult')}, 实际={res_int}, 匹配={is_match}")
-                    
-                    return is_match
-                    
-                except ValueError:
-                    logger.error(f"无法将识别结果转换为数字: {res_clean[0]}")
-                    return False
-            else:
-                # 处理特殊情况
-                if self.target_name == "p1_legacy" and expectedAnswer.get("intResult") == 50:
-                    # 针对p1.png的特殊处理，已知有50发子弹但OCR识别困难
-                    logger.warning("OCR未能识别到数字，但已知此特定图像中弹药数为50，特殊处理为匹配成功")
-                    return True
+            # 如果OCR结果为空，则提前返回失败
+            if not ocr_text:
+                logger.warning("未识别到有效文本")
+                return False
                 
-                logger.error(f"未识别到有效数字，OCR结果: '{ocr_text}'")
+            # 尝试将OCR结果转换为数字
+            try:
+                actual_ammo = int(ocr_text)
+                logger.info(f"OCR识别弹药数: {actual_ammo}")
+                
+                # 比较实际弹药数与预期弹药数
+                is_matching = actual_ammo == expected_ammo
+                logger.info(f"弹药数对比 - 预期: {expected_ammo}, 实际: {actual_ammo}, 匹配: {is_matching}")
+                
+                return is_matching
+            except ValueError as e:
+                logger.error(f"OCR结果无法转换为数字: {e}")
                 return False
                 
         except Exception as e:
-            logger.error(f"测试弹药同步失败: {e}")
-            if debugEnabled:
-                logger.exception("详细错误信息")
+            logger.exception(f"弹药文本同步测试出错: {e}")
             return False
 
     def check_ammo_state(self, screenshot_path, expected_value, region=None, cv_params=None):
@@ -498,10 +432,8 @@ class LogicLayer:
             return None
 
 if __name__ == "__main__":
-    # 配置日志 - 将默认级别从DEBUG改为INFO，使用更简洁的格式
-    logger.remove()  # 移除默认处理器
-    logger.add("test_debug.log", level="DEBUG", rotation="1 MB")  # 文件日志保持DEBUG级别以便调试
-    logger.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>")  # 终端日志使用INFO级别和简洁格式
+    # 配置日志
+    logger.add("test_debug.log", level="DEBUG", rotation="1 MB")
     logger.info("开始AssaultCube视觉检测调试")
     
     # 加载配置
@@ -509,15 +441,19 @@ if __name__ == "__main__":
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
-            active_target = config.get('active_target', 'assaultcube')
-            target_config = config.get('targets', {}).get(active_target, {})
-            cv_params = target_config.get('cv_params', {})
-            screenshot_base_path = target_config.get('screenshot_base_path', 'test_images')
+        active_target = config.get('active_target', 'assaultcube')
     except Exception as e:
         logger.error(f"加载配置失败: {e}")
-        config, active_target, target_config, cv_params, screenshot_base_path = None, 'assaultcube', {}, {}, 'test_images'
+        active_target = 'assaultcube'
+        config = {}
     
     logger.info(f"当前测试目标: {active_target}")
+    
+    # 创建目标特定的调试目录
+    debug_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug")
+    target_debug_dir = os.path.join(debug_base_dir, active_target)  # 创建目标子目录，例如 debug/assaultcube/
+    os.makedirs(target_debug_dir, exist_ok=True)
+    logger.info(f"创建目标特定调试目录: {target_debug_dir}")
     
     # 初始化LogicLayer
     logicLayer = LogicLayer(active_target, config)
@@ -525,50 +461,50 @@ if __name__ == "__main__":
     # 测试准星检测
     logger.info("===== 准星检测测试 =====")
     # 拼接完整路径
-    full_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), screenshot_base_path)
+    full_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                  config.get('targets', {}).get(active_target, {}).get('screenshot_base_path', 'unitTestResources'))
     crosshair_images = glob.glob(os.path.join(full_base_path, 'Crosshair', '*.png'))
     
     crosshair_pass = 0
     crosshair_total = 0
     
     for image_path in crosshair_images:
-        image = cv2.imread(image_path)
-        if image is None:
-            logger.warning(f"无法读取图像: {image_path}")
-            continue
+        try:
+            # 从文件名判断期望结果
+            filename = os.path.basename(image_path)
+            expected_result = "dead" not in filename and "reload" not in filename and "teammate" not in filename
             
-        # 从文件名判断期望结果：标准准星在多数情况下存在，仅在换弹、死亡、瞄准队友时消失
-        file_name_lower = os.path.basename(image_path).lower()
-        
-        # 标准准星应该消失的情况
-        if 'reload' in file_name_lower or 'dead' in file_name_lower or 'misc_dead' in file_name_lower or 'target_teammate' in file_name_lower:
-            expected_result = False
-        # 标准准星应该存在的情况
-        elif 'normal' in file_name_lower or 'target_enemy' in file_name_lower or 'secondary' in file_name_lower or 'knife' in file_name_lower or 'grenade' in file_name_lower or 'template' in file_name_lower:
-            expected_result = True
-        else:
-            logger.warning(f"未知的准星状态: {file_name_lower}，无法确定期望结果，跳过。")
-            continue  # 如果期望不明确，跳过此图像
-        
-        # 调用修改后的函数，它返回原始匹配状态
-        # 关闭调试输出，减少终端信息
-        is_match_detected = logicLayer.testWeaponCrossPresence(
-            [image], 
-            context={}, 
-            expectedAnswer={"boolResult": "IrrelevantNow"},
-            cv_params=cv_params,
-            debugEnabled=False  # 关闭调试输出
-        )
-        
-        # 比较检测状态与期望状态
-        result_str = '通过' if is_match_detected == expected_result else '失败'
-        logger.info(f"准星测试: {file_name_lower} - 期望可见: {expected_result}, 实际检测到: {is_match_detected} - {result_str}")
-        
-        # 计算结果
-        crosshair_total += 1
-        if is_match_detected == expected_result:
-            crosshair_pass += 1
+            # 加载图像
+            screenshot = cv2.imread(image_path)
             
+            if screenshot is None:
+                logger.warning(f"无法加载图像: {image_path}")
+                continue
+                
+            # 构造测试上下文
+            context = {'screenshotFile': image_path}
+            expected_answer = {"boolResult": "True" if expected_result else "False"}
+            
+            # 进行测试
+            isMatching = logicLayer.testWeaponCrossPresence(
+                [screenshot], 
+                context, 
+                expected_answer, 
+                debugEnabled=True,
+                debug_dir=target_debug_dir
+            )
+            
+            # 比较结果
+            result_str = "通过" if isMatching == expected_result else "失败"
+            logger.info(f"准星测试: {filename} - 期望: {expected_result}, 结果: {isMatching}, 判定: {result_str}")
+            
+            crosshair_total += 1
+            if isMatching == expected_result:
+                crosshair_pass += 1
+                
+        except Exception as e:
+            logger.error(f"准星测试出错: {e}")
+    
     logger.info(f"准星测试结果: {crosshair_pass}/{crosshair_total} 通过, 通过率: {crosshair_pass/crosshair_total*100 if crosshair_total > 0 else 0:.2f}%")
     
     # 测试弹药识别
@@ -579,62 +515,50 @@ if __name__ == "__main__":
     ammo_total = 0
     
     for image_path in ammo_images:
-        image = cv2.imread(image_path)
-        if image is None:
-            logger.warning(f"无法读取图像: {image_path}")
-            continue
-            
-        # 从文件名解析期望的弹药数
-        file_name = os.path.basename(image_path)
-        expected_ammo = None
-        
-        # 首先尝试匹配 'ammo_clip<数字>_total<数字>.png'
-        match = re.search(r'ammo_clip(\d+)_total\d+\.png', file_name, re.IGNORECASE)
-        if match:
-            try:
-                expected_ammo = int(match.group(1))
-            except (IndexError, ValueError) as e:
-                logger.warning(f"无法从 {file_name} 的匹配组1 '{match.group(1) if match.groups() else ''}' 提取整数: {e}")
-        else:
-            # 如果失败，尝试匹配旧的 'ammo_XX_YY.png' 或 'ammo_XX.png' 格式
-            match = re.search(r'ammo_(\d+)', file_name, re.IGNORECASE) # 更通用的匹配
-            if match:
-                try:
-                    expected_ammo = int(match.group(1))
-                except (IndexError, ValueError) as e:
-                    logger.warning(f"无法从 {file_name} 的匹配组1 '{match.group(1) if match.groups() else ''}' 提取整数: {e}")
-
-        if expected_ammo is None:
-            logger.warning(f"无法从文件名解析弹药数: {file_name}，跳过测试")
-            continue # 跳到循环的下一个图像
-        
-        # 准备上下文
-        context = {}
-        
-        # 调用弹药检测
         try:
-            # 添加try-except块捕获详细异常，但只输出简洁的错误信息
+            # 从文件名提取期望的弹药数
+            filename = os.path.basename(image_path)
+            match = re.search(r'ammo_clip(\d+)_total(\d+)', filename)
+            
+            if not match:
+                logger.warning(f"无法从文件名解析弹药数量: {filename}")
+                continue
+                
+            expected_ammo = int(match.group(1))  # 当前弹匣数量
+            
+            # 加载图像
+            screenshot = cv2.imread(image_path)
+            
+            if screenshot is None:
+                logger.warning(f"无法加载图像: {image_path}")
+                continue
+                
+            # 构造测试上下文
+            context = {'screenshotFile': image_path}
+            expected_answer = {"intResult": expected_ammo}
+            
+            # 进行测试，记录OCR的原始结果
             actual_result = logicLayer.testAmmoTextInSync(
-                [image],
-                context=context,
-                expectedAnswer={"intResult": expected_ammo},
-                cv_params=cv_params,
-                debugEnabled=False  # 关闭调试输出，减少终端信息
+                [screenshot], 
+                context, 
+                expected_answer, 
+                debugEnabled=True,
+                debug_dir=target_debug_dir
             )
             
-            # 计算结果
+            # 从context获取OCR结果
+            ocr_text = context.get("ocr_result", "")
+            
+            # 比较结果
+            result_str = "通过" if actual_result else "失败"
+            logger.info(f"弹药测试: {filename} - 期望: {expected_ammo}, OCR结果: '{ocr_text}', 判定: {result_str}")
+            
             ammo_total += 1
             if actual_result:
                 ammo_pass += 1
-                result_str = "通过"
-            else:
-                result_str = "失败"
                 
-            logger.info(f"弹药测试: {file_name} - 期望: {expected_ammo}, 结果: {result_str}")
-        
         except Exception as e:
-            # 捕获异常并简洁地记录
-            logger.error(f"测试文件 {file_name} 时出错: {str(e)}")
+            logger.error(f"弹药测试出错: {e}")
     
     logger.info(f"弹药测试结果: {ammo_pass}/{ammo_total} 通过, 通过率: {ammo_pass/ammo_total*100 if ammo_total > 0 else 0:.2f}%")
     
