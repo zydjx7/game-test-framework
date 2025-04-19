@@ -272,11 +272,12 @@ class LogicLayer:
             if cv_params:
                 yaml_cv_params.update(cv_params)
                 
-            # 从配置获取弹药区域(如果有)
-            roi_rect = yaml_cv_params.get("roi_rect")
+            # AssaultCube 直接用绝对 bbox
+            roi_rect = yaml_cv_params.get("ammo_bbox") or \
+                       self.get_target_specific_param("ammo_bbox")
             
             # 获取过滤器类型
-            filter_type = yaml_cv_params.get("filter_type", "hsv")
+            filter_type = yaml_cv_params.get("ammo_filter_type", "gray")
             
             # 构建文件名后缀用于调试
             filename_suffix = ""
@@ -287,16 +288,19 @@ class LogicLayer:
                 filename_suffix = f"img_{int(time.time())}"
             
             # 使用VisionUtils读取文本
-            # 将调试目录传递给OCR函数
+            # 添加额外的cv_params参数，确保完整传递所有需要的参数
             ocr_text = VisionUtils.readTextFromPicture(
-                screenshot, 
-                roi_rect, 
-                filter_type, 
-                yaml_cv_params, 
-                debugEnabled, 
-                filename_suffix, 
-                debug_dir
-                
+                srcImg=screenshot, 
+                boundingBox=roi_rect, 
+                filter_type=filter_type, 
+                context={**yaml_cv_params,
+                        "psm": yaml_cv_params.get("psm", 7),
+                        "whitelist": yaml_cv_params.get("whitelist", "0123456789")},
+                cv_params=yaml_cv_params,  # 明确传递cv_params
+                do_imgProcessing=True,     # 明确指定进行图像处理
+                debugEnabled=debugEnabled, 
+                filename_suffix=filename_suffix, 
+                debug_dir=debug_dir        # 确保debug_dir参数正确传递
             )
             
             # 将OCR结果保存到context中以便在测试循环中使用
@@ -433,12 +437,18 @@ class LogicLayer:
             return None
 
 if __name__ == "__main__":
+    import datetime  # 导入datetime以获取本地时间
+    
     # 配置日志
     logger.add("test_debug.log", level="DEBUG", rotation="1 MB")
     logger.info("开始AssaultCube视觉检测调试")
     
+    # 获取当前脚本的绝对路径和基础目录
+    current_script_path = os.path.abspath(__file__)
+    base_dir = os.path.dirname(current_script_path)
+    
     # 加载配置
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+    config_path = os.path.join(base_dir, "config.yaml")
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
@@ -450,11 +460,28 @@ if __name__ == "__main__":
     
     logger.info(f"当前测试目标: {active_target}")
     
-    # 创建目标特定的调试目录
-    debug_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "debug")
-    target_debug_dir = os.path.join(debug_base_dir, active_target)  # 创建目标子目录，例如 debug/assaultcube/
-    os.makedirs(target_debug_dir, exist_ok=True)
-    logger.info(f"创建目标特定调试目录: {target_debug_dir}")
+    # 创建带有本地时间戳的调试目录结构
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # 注意：使用绝对路径确保调试目录位置正确
+    debug_base_dir = os.path.join(base_dir, "debug")
+    
+    # 创建准星和弹药测试的专用目录
+    crosshair_base_dir = os.path.join(debug_base_dir, "crosshair_tests")
+    ammo_base_dir = os.path.join(debug_base_dir, "ammo_tests")
+    
+    # 为本轮测试创建带时间戳的子目录
+    current_crosshair_dir = os.path.join(crosshair_base_dir, f"test_{current_time}")
+    current_ammo_dir = os.path.join(ammo_base_dir, f"test_{current_time}")
+    
+    # 创建所有必要的目录
+    os.makedirs(crosshair_base_dir, exist_ok=True)
+    os.makedirs(ammo_base_dir, exist_ok=True)
+    os.makedirs(current_crosshair_dir, exist_ok=True)
+    os.makedirs(current_ammo_dir, exist_ok=True)
+    
+    logger.info(f"创建测试特定调试目录:")
+    logger.info(f"准星测试目录: {current_crosshair_dir}")
+    logger.info(f"弹药测试目录: {current_ammo_dir}")
     
     # 初始化LogicLayer
     logicLayer = LogicLayer(active_target, config)
@@ -462,7 +489,7 @@ if __name__ == "__main__":
     # 测试准星检测
     logger.info("===== 准星检测测试 =====")
     # 拼接完整路径
-    full_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+    full_base_path = os.path.join(base_dir, 
                                   config.get('targets', {}).get(active_target, {}).get('screenshot_base_path', 'unitTestResources'))
     crosshair_images = glob.glob(os.path.join(full_base_path, 'Crosshair', '*.png'))
     
@@ -486,13 +513,13 @@ if __name__ == "__main__":
             context = {'screenshotFile': image_path}
             expected_answer = {"boolResult": "True" if expected_result else "False"}
             
-            # 进行测试
+            # 进行测试 - 使用准星专用目录
             isMatching = logicLayer.testWeaponCrossPresence(
                 [screenshot], 
                 context, 
                 expected_answer, 
                 debugEnabled=True,
-                debug_dir=target_debug_dir
+                debug_dir=current_crosshair_dir
             )
             
             # 比较结果
@@ -534,17 +561,20 @@ if __name__ == "__main__":
                 logger.warning(f"无法加载图像: {image_path}")
                 continue
                 
-            # 构造测试上下文
+            # 构造测试上下文，使用原始文件名作为标识，而不是时间戳
             context = {'screenshotFile': image_path}
             expected_answer = {"intResult": expected_ammo}
             
-            # 进行测试，记录OCR的原始结果
+            # 进行测试 - 使用弹药专用目录，确保它是绝对路径
+            logger.debug(f"弹药测试使用调试目录: {current_ammo_dir}")
+            
+            # 进行测试 - 使用弹药专用目录
             actual_result = logicLayer.testAmmoTextInSync(
                 [screenshot], 
                 context, 
                 expected_answer, 
                 debugEnabled=True,
-                debug_dir=target_debug_dir
+                debug_dir=current_ammo_dir
             )
             
             # 从context获取OCR结果

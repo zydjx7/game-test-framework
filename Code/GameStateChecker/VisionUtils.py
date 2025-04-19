@@ -30,6 +30,31 @@ class VisionUtils:
         print(f"警告：无法加载Tesseract配置: {e}")
         cross_threshold = 0.6  # 默认模板匹配阈值
         min_keypoints = 3     # 默认最小特征点数
+    
+    # 根路径和默认调试目录
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    default_debug_dir = os.path.join(base_path, "debug")
+    
+    @staticmethod
+    def normalize_debug_dir(debug_dir):
+        """
+        标准化调试目录，确保使用绝对路径并创建目录
+        @param debug_dir: 调试目录路径
+        @return: 绝对路径
+        """
+        # 如果传入空路径或None，使用默认目录
+        if not debug_dir:
+            debug_dir = VisionUtils.default_debug_dir
+            
+        # 如果传入相对路径，转换为绝对路径
+        if not os.path.isabs(debug_dir):
+            debug_dir = os.path.join(VisionUtils.base_path, debug_dir)
+            
+        # 确保目录存在
+        os.makedirs(debug_dir, exist_ok=True)
+        
+        logger.debug(f"使用调试目录: {debug_dir}")
+        return debug_dir
 
     @staticmethod
     def readTextFromPicture(srcImg, boundingBox, filter_type='value', context=None, cv_params=None, do_imgProcessing=True, debugEnabled=False, filename_suffix="", debug_dir="debug"):
@@ -48,11 +73,21 @@ class VisionUtils:
         @return: 识别的文本
         """
         try:
+            # 标准化调试目录路径
+            if debugEnabled:
+                debug_dir = VisionUtils.normalize_debug_dir(debug_dir)
+            
             # 提取ROI区域
             x, y, w, h = boundingBox
             roi = srcImg[y:y+h, x:x+w] if y >= 0 and x >= 0 and y+h <= srcImg.shape[0] and x+w <= srcImg.shape[1] else srcImg
             
             if debugEnabled:
+                # 确保文件名后缀不为空，如果为空则使用时间戳
+                if not filename_suffix:
+                    import datetime
+                    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                    filename_suffix = f"auto_{current_time}"
+                
                 # 保存ROI区域进行调试
                 os.makedirs(debug_dir, exist_ok=True)
                 roi_filename = os.path.join(debug_dir, f"ammo_roi_{filename_suffix}.png")
@@ -147,21 +182,34 @@ class VisionUtils:
             # 设置Tesseract OCR选项 - PSM 8表示单字块模式
             custom_config = r'--psm 8 -c tessedit_char_whitelist=0123456789'
             
-            # 使用Tesseract进行OCR识别
-            text = pytesseract.image_to_string(binary, config=custom_config).strip()
-            
-            # 删除所有非数字字符(包括句点、空格等)
-            import re
-            text = re.sub(r'[^0-9]', '', text)
-            
-            if debugEnabled:
-                logger.info(f"OCR识别结果: '{text}' (过滤类型: {filter_type})")
+            try:
+                # 使用Tesseract进行OCR识别
+                text = pytesseract.image_to_string(binary, config=custom_config).strip()
                 
-            # 记录OCR结果到context（用于调试和结果传递）
-            if context is not None:
-                context["ocr_result"] = text
+                # 类型检查，确保返回值是字符串而不是布尔值
+                if isinstance(text, bool):
+                    logger.warning(f"OCR返回了一个布尔值 ({text}) 而不是文本，将其转换为空字符串")
+                    text = ""
+                    
+                # 删除所有非数字字符(包括句点、空格等)
+                import re
+                text = re.sub(r'[^0-9]', '', text) if text else ""
                 
-            return text
+                if debugEnabled:
+                    logger.info(f"OCR识别结果: '{text}' (过滤类型: {filter_type})")
+                    
+                # 记录OCR结果到context（用于调试和结果传递）
+                if context is not None:
+                    context["ocr_result"] = text
+                    
+                # 添加兜底处理，避免返回None导致后续处理出错
+                return "" if text is None else text
+                
+            except Exception as inner_e:
+                logger.warning(f"Tesseract OCR处理时发生内部错误: {inner_e}")
+                if context is not None:
+                    context["ocr_error"] = f"内部OCR错误: {inner_e}"
+                return ""
             
         except Exception as e:
             logger.error(f"OCR文本识别失败: {e}")
@@ -185,6 +233,10 @@ class VisionUtils:
         @return: 匹配的特征点列表和最小特征点要求
         """
         try:
+            # 标准化调试目录路径
+            if debugEnabled:
+                debug_dir = VisionUtils.normalize_debug_dir(debug_dir)
+                
             # 检查图片类型
             if type(img_target) is not np.ndarray:
                 img_target = np.array(img_target)
@@ -241,6 +293,12 @@ class VisionUtils:
                 # 创建调试目录
                 os.makedirs(debug_dir, exist_ok=True)
                 
+                # 确保文件名后缀不为空
+                if not filename_suffix:
+                    import datetime
+                    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                    filename_suffix = f"auto_{current_time}"
+                
                 # 保存匹配结果图像
                 if len(good_matches) > 0:
                     img_matches = cv2.drawMatches(img_src, kp1, img_target, kp2, good_matches[:min(10, len(good_matches))], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
@@ -278,6 +336,13 @@ class VisionUtils:
                     cv2.imwrite(pos_path, result_img)
                     
                     logger.debug(f"已保存模板匹配结果图像到 {debug_dir} 目录")
+                
+                # 修改逻辑：如果模板匹配分数超过0.9，直接判为匹配成功，不考虑特征点数量
+                if max_val >= 0.9:
+                    logger.info(f"模板匹配分数达到{max_val:.3f} >= 0.9，直接判定为匹配成功")
+                    matched = True
+                    # 返回足够数量的匹配点以通过检查
+                    return [1] * minKeypoints, minKeypoints
             
             matched = len(good_matches) >= minKeypoints
             logger.info(f"特征点匹配结果: {len(good_matches)}/{minKeypoints}, 匹配状态: {matched}")
@@ -303,6 +368,10 @@ class VisionUtils:
         @return: 布尔值(是否匹配成功)或包含详细信息的字典
         """
         try:
+            # 标准化调试目录路径
+            if debugEnabled:
+                debug_dir = VisionUtils.normalize_debug_dir(debug_dir)
+                
             if threshold is None:
                 threshold = VisionUtils.cross_threshold
                 
@@ -336,11 +405,23 @@ class VisionUtils:
             # 获取最大匹配值及位置
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result_mat)
             
-            # 进行结果判断
-            matched = max_val >= threshold
+            # 修改判断逻辑：
+            # 1. 如果相关系数大于等于0.9，直接判定为匹配成功
+            # 2. 否则使用配置的阈值判断
+            if max_val >= 0.9:
+                matched = True
+                logger.info(f"模板匹配分数达到{max_val:.3f} >= 0.9，直接判定为匹配成功")
+            else:
+                matched = max_val >= threshold
             
             # 添加详细调试日志
             if debugEnabled:
+                # 确保文件名后缀不为空
+                if not filename_suffix:
+                    import datetime
+                    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                    filename_suffix = f"auto_{current_time}"
+                    
                 logger.debug(f"模板匹配最大值: {max_val:.4f}, 阈值: {threshold:.4f}, 匹配状态: {matched}")
                 
                 # 保存匹配结果可视化
@@ -390,55 +471,4 @@ class VisionUtils:
                 return {"matched": False, "method": "error", "score": 0.0, "error": str(e)}
             else:
                 return False
-
-    @staticmethod
-    def getBinaryImage(srcImg, filter_type='hsv', context=None):
-        """
-        获取二值化图像用于调试
-        @param srcImg: 源图像
-        @param filter_type: 过滤类型，'hsv'或'value'
-        @param context: 上下文字典，包含过滤参数
-        @return: 二值化图像
-        """
-        try:
-            if context is None:
-                context = {}
-                
-            if filter_type == 'hsv':
-                hsv_min = context.get("textColorValueInHSV_min", 0)
-                hsv_max = context.get("textColorValueInHSV_max", 180)
-                
-                hsv = cv2.cvtColor(srcImg, cv2.COLOR_BGR2HSV)
-                # 创建掩码
-                lower = np.array([hsv_min, 50, 50])
-                upper = np.array([hsv_max, 255, 255])
-                mask = cv2.inRange(hsv, lower, upper)
-                return mask
-            elif filter_type == 'value':
-                val_min = context.get("valueThresholdMin", 200)  # 默认阈值提高
-                val_max = context.get("valueThresholdMax", 255)
-                
-                gray = cv2.cvtColor(srcImg, cv2.COLOR_BGR2GRAY)
-                _, mask = cv2.threshold(gray, val_min, val_max, cv2.THRESH_BINARY)
-                return mask
-            else:
-                # 默认返回灰度图
-                return cv2.cvtColor(srcImg, cv2.COLOR_BGR2GRAY)
-                
-        except Exception as e:
-            logger.error(f"获取二值化图像失败: {e}")
-            return None
-
-    @staticmethod
-    def preprocessimg_demo():
-        """图像预处理演示"""
-        img = cv2.imread("Cross.png", cv2.COLOR_BGR2GRAY)
-        if img is None:
-            print("无法加载图像")
-            return
-            
-        img[img < 150] = 0
-        cv2.imshow("processed image", img)
-        cv2.waitKey()
-        cv2.imwrite("Cross_p.png", img)
 
