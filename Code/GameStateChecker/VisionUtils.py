@@ -8,6 +8,7 @@ import numpy as np
 from typing import List, Tuple, Dict, Union
 from matplotlib import pyplot as plt
 from loguru import logger
+from AmmoTemplateRecognizer import AmmoTemplateRecognizer
 
 class VisionUtils:
     """
@@ -53,6 +54,7 @@ class VisionUtils:
         # 确保目录存在
         os.makedirs(debug_dir, exist_ok=True)
         
+        # 使用DEBUG级别记录目录信息
         logger.debug(f"使用调试目录: {debug_dir}")
         return debug_dir
 
@@ -76,6 +78,8 @@ class VisionUtils:
             # 标准化调试目录路径
             if debugEnabled:
                 debug_dir = VisionUtils.normalize_debug_dir(debug_dir)
+                # 保留处理图像文件的debug信息
+                logger.debug(f"处理图像文件: {filename_suffix}")
             
             # 提取ROI区域
             x, y, w, h = boundingBox
@@ -88,11 +92,10 @@ class VisionUtils:
                     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                     filename_suffix = f"auto_{current_time}"
                 
-                # 保存ROI区域进行调试
+                # 保存ROI区域进行调试，但不记录路径
                 os.makedirs(debug_dir, exist_ok=True)
                 roi_filename = os.path.join(debug_dir, f"ammo_roi_{filename_suffix}.png")
                 cv2.imwrite(roi_filename, roi)
-                logger.debug(f"已保存ROI区域图像到 {roi_filename}")
                 
             # 检查ROI是否为空
             if roi is None or roi.size == 0:
@@ -130,7 +133,10 @@ class VisionUtils:
                 binary = cv2.inRange(hsv, lower, upper)
                 
                 if debugEnabled:
-                    logger.debug(f"使用HSV过滤: H({hue_min}-{hue_max}), S({sat_min}-{sat_max}), V({val_min}-{val_max})")
+                    # 只在特定条件下输出HSV参数信息，使用DEBUG级别
+                    if "hsv_debug_output" not in context:
+                        logger.debug(f"使用HSV过滤: H({hue_min}-{hue_max}), S({sat_min}-{sat_max}), V({val_min}-{val_max})")
+                        context["hsv_debug_output"] = True
                     
                     # 保存HSV通道图像用于调试
                     h, s, v = cv2.split(hsv)
@@ -140,7 +146,7 @@ class VisionUtils:
                 
             else:  # 'value'模式(灰度处理)
                 # 从 cv_params 或 context 获取阈值参数
-                value_min = cv_params.get('ammo_value_threshold_min', context.get('valueThresholdMin', 150))
+                value_min = cv_params.get('ammo_value_threshold_min', context.get('valueThresholdMin', 120))  # 降低默认值为120，提高弱对比度识别能力
                 value_max = cv_params.get('ammo_value_threshold_max', context.get('valueThresholdMax', 255))
                 
                 # 转换为灰度图
@@ -150,7 +156,11 @@ class VisionUtils:
                 _, binary = cv2.threshold(gray, value_min, value_max, cv2.THRESH_BINARY)
                 
                 if debugEnabled:
-                    logger.debug(f"使用Value过滤: ({value_min}-{value_max})")
+                    # 简化，只在特定条件下输出参数信息，使用DEBUG级别
+                    if "value_debug_output" not in context:
+                        logger.debug(f"使用Value过滤: ({value_min}-{value_max})")
+                        context["value_debug_output"] = True
+                    
                     # 保存灰度图像用于调试
                     cv2.imwrite(os.path.join(debug_dir, f"gray_{filename_suffix}.png"), gray)
             
@@ -160,27 +170,64 @@ class VisionUtils:
                 if debugEnabled:
                     cv2.imwrite(os.path.join(debug_dir, f"binary_pre_processing_{filename_suffix}.png"), binary)
                 
+                # 从ocr_params获取形态学处理参数
+                ammo_ocr_params = cv_params.get('ammo_ocr_params', {}) if cv_params else {}
+                
+                # 从cv_params或context获取形态学处理参数
+                ksize = ammo_ocr_params.get('morph_kernel_size', 
+                       cv_params.get('morph_kernel_size', 
+                       context.get('morph_kernel_size', 2)))
+                
+                iters = ammo_ocr_params.get('morph_iterations', 
+                       cv_params.get('morph_iterations', 
+                       context.get('morph_iterations', 1)))
+                
                 # 应用膨胀和闭操作使文字更连贯
-                kernel = np.ones((2, 2), np.uint8)
-                binary = cv2.dilate(binary, kernel, iterations=1)
-                binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+                kernel = np.ones((ksize, ksize), np.uint8)
+                binary = cv2.dilate(binary, kernel, iterations=iters)
+                binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=iters)
+                
+                # 可选的图像缩放处理
+                scale_factor = ammo_ocr_params.get('scale_factor', 
+                              cv_params.get('scale_factor', 
+                              context.get('scale_factor', 1.0)))
+                
+                if scale_factor > 1.0:
+                    binary = cv2.resize(binary, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_CUBIC)
+                    if debugEnabled:
+                        logger.debug(f"应用图像放大: 缩放因子 {scale_factor}")
                 
                 if debugEnabled:
-                    logger.debug("应用了形态学处理: 膨胀(2x2内核,1次迭代) + 闭操作(2x2内核,1次迭代)")
+                    # 只在第一次输出形态学处理信息，使用DEBUG级别
+                    if "morph_info_output" not in context:
+                        logger.debug(f"应用了形态学处理: 膨胀({ksize}x{ksize}内核,{iters}次迭代) + 闭操作({ksize}x{ksize}内核,{iters}次迭代)")
+                        context["morph_info_output"] = True
             
             if debugEnabled and binary is not None:
                 # 保存二值化图像(用于调试)
                 binary_filename = os.path.join(debug_dir, f"debug_binary_{filename_suffix}.png")
                 cv2.imwrite(binary_filename, binary)
-                logger.debug(f"已保存二值化图像到 {binary_filename}")
             
             # 检查二值图像是否为有效
             if binary is None:
                 logger.error("二值化图像生成失败")
                 return ""
             
-            # 设置Tesseract OCR选项 - PSM 8表示单字块模式
-            custom_config = r'--psm 8 -c tessedit_char_whitelist=0123456789'
+            # 从ammo_ocr_params获取OCR参数
+            ammo_ocr_params = cv_params.get('ammo_ocr_params', {}) if cv_params else {}
+            
+            # 从context获取OCR参数，允许外部控制PSM模式
+            # 优先级: ammo_ocr_params > cv_params > context > 默认值
+            psm = ammo_ocr_params.get('psm', 
+                 cv_params.get('psm', 
+                 context.get('psm', 7)))  # 默认使用单行文本模式7，适合多位数字识别
+                 
+            whitelist = ammo_ocr_params.get('whitelist', 
+                       cv_params.get('whitelist', 
+                       context.get('whitelist', '0123456789')))
+            
+            # 设置Tesseract OCR选项
+            custom_config = f'--psm {psm} -c tessedit_char_whitelist={whitelist}'
             
             try:
                 # 使用Tesseract进行OCR识别
@@ -196,7 +243,7 @@ class VisionUtils:
                 text = re.sub(r'[^0-9]', '', text) if text else ""
                 
                 if debugEnabled:
-                    logger.info(f"OCR识别结果: '{text}' (过滤类型: {filter_type})")
+                    logger.info(f"OCR识别结果: '{text}' (过滤类型: {filter_type}, PSM模式: {psm})")
                     
                 # 记录OCR结果到context（用于调试和结果传递）
                 if context is not None:
@@ -221,105 +268,138 @@ class VisionUtils:
     @staticmethod
     def matchTemplateImg(img_src, img_target, minKeypoints=6, useORB=False, useSIFT=True, debugEnabled=False, debug_dir="debug", filename_suffix=""):
         """
-        使用特征点匹配(SIFT/ORB)和备选的模板匹配来比对图像
-        @param img_src: 源图像/模板
-        @param img_target: 目标图像
-        @param minKeypoints: 最小匹配特征点数量
-        @param useORB: 是否使用ORB特征
-        @param useSIFT: 是否使用SIFT特征
+        使用特征点匹配算法匹配两张图片，如果特征点不足则使用模板匹配作为备选
+        @param img_src: 源图片(模板)
+        @param img_target: 目标图片(场景)
+        @param minKeypoints: 最少匹配特征点数
+        @param useORB: 是否使用ORB算法
+        @param useSIFT: 是否使用SIFT算法
         @param debugEnabled: 是否启用调试
         @param debug_dir: 调试图像保存目录
-        @param filename_suffix: 调试文件名后缀，用于区分不同图像的调试输出
-        @return: 匹配的特征点列表和最小特征点要求
+        @param filename_suffix: 调试文件名后缀
+        @return: (good_matches, min_keypoints_required) - 匹配的特征点以及要求的最小特征点数
         """
+        good_matches = []
+        min_keypoints_required = minKeypoints  # 默认为传入的值
+        
         try:
-            # 标准化调试目录路径
+            # 标准化调试目录路径 
             if debugEnabled:
                 debug_dir = VisionUtils.normalize_debug_dir(debug_dir)
                 
-            # 检查图片类型
-            if type(img_target) is not np.ndarray:
-                img_target = np.array(img_target)
-            if type(img_src) is not np.ndarray:
-                img_src = np.array(img_src)
-                
-            # 检查图像通道，转为灰度图
-            if len(img_src.shape) > 2:
-                img_src = cv2.cvtColor(img_src, cv2.COLOR_BGR2GRAY)
-            if len(img_target.shape) > 2:
-                img_target = cv2.cvtColor(img_target, cv2.COLOR_BGR2GRAY)
-                
-            # 创建SIFT检测器
-            sift = cv2.SIFT_create()
-            
-            # 在图像中检测关键点和描述符
-            kp1, des1 = sift.detectAndCompute(img_src, None)
-            kp2, des2 = sift.detectAndCompute(img_target, None)
-            
-            # 记录关键点信息
-            if debugEnabled:
-                logger.debug(f"SIFT特征检测: 模板图像有 {len(kp1) if kp1 else 0} 个关键点, 目标图像有 {len(kp2) if kp2 else 0} 个关键点")
-            
-            # 使用FLANN匹配器进行特征匹配
-            FLANN_INDEX_KDTREE = 1
-            index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-            search_params = dict(checks=50)
-            
-            flann = cv2.FlannBasedMatcher(index_params, search_params)
-            
-            good_matches = []
-            
-            # 确保检测到足够的特征点
-            if des1 is not None and des2 is not None and len(des1) > 0 and len(des2) > 0:
-                try:
-                    # 进行KNN匹配
-                    matches = flann.knnMatch(des1, des2, k=2)
-                    
-                    # 应用Lowe过滤条件
-                    lowe_ratio = 0.7  # Lowe推荐的比例
-                    for m, n in matches:
-                        if m.distance < lowe_ratio * n.distance:
-                            good_matches.append(m)
-                    
-                    if debugEnabled:
-                        logger.debug(f"SIFT找到 {len(matches)} 对匹配, 应用Lowe比率({lowe_ratio})过滤后剩余 {len(good_matches)} 个好的匹配")
-                        logger.debug(f"与目标值比较: {len(good_matches)}/{minKeypoints} 个匹配点, 要求比例: {lowe_ratio}")
-                    
-                except Exception as e:
-                    logger.warning(f"特征匹配过程中出错: {e}")
-            
-            # 保存匹配结果图像（如果启用调试）
-            if debugEnabled:
-                # 创建调试目录
-                os.makedirs(debug_dir, exist_ok=True)
-                
                 # 确保文件名后缀不为空
                 if not filename_suffix:
+                    # 生成一个基于时间戳的默认后缀
                     import datetime
                     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                     filename_suffix = f"auto_{current_time}"
+            
+            # 检查图像尺寸和通道
+            if img_src is None or img_target is None:
+                logger.error("源图像或目标图像为空")
+                return good_matches, min_keypoints_required
                 
-                # 保存匹配结果图像
-                if len(good_matches) > 0:
-                    img_matches = cv2.drawMatches(img_src, kp1, img_target, kp2, good_matches[:min(10, len(good_matches))], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-                    
-                    # 使用文件名后缀区分不同的匹配图像
-                    suffix = f"_{filename_suffix}" if filename_suffix else ""
-                    match_path = os.path.join(debug_dir, f"sift_matches{suffix}.png")
-                    cv2.imwrite(match_path, img_matches)
-                    logger.debug(f"已保存SIFT匹配可视化图像到 {match_path}")
-                else:
-                    logger.debug("未找到SIFT特征匹配，无法生成匹配图像")
+            # 确保输入图像是灰度图
+            if len(img_src.shape) > 2:
+                img_src_gray = cv2.cvtColor(img_src, cv2.COLOR_BGR2GRAY)
+            else:
+                img_src_gray = img_src
                 
-            # 如果匹配点不足，尝试模板匹配
+            if len(img_target.shape) > 2:
+                img_target_gray = cv2.cvtColor(img_target, cv2.COLOR_BGR2GRAY)
+            else:
+                img_target_gray = img_target
+                
+            # 选择使用的特征检测算法
+            if useORB:
+                # 使用ORB检测算法
+                detector = cv2.ORB_create()
+                # ORB默认使用汉明距离
+                bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                
+                if debugEnabled:
+                    # 只在开启调试且指定ORB算法时输出一次，避免重复日志
+                    logger.debug("使用ORB特征检测算法")
+                
+            elif useSIFT:
+                # 使用SIFT检测算法
+                detector = cv2.SIFT_create()
+                # SIFT默认使用L2范数
+                bf = cv2.BFMatcher()
+                lowe_ratio = 0.75  # David Lowe的论文中推荐的比率阈值
+                
+                if debugEnabled:
+                    # 只在特定条件下输出算法选择日志，避免重复
+                    if "sift_info_output" not in globals():
+                        globals()["sift_info_output"] = True
+                        logger.debug("使用SIFT特征检测算法")
+            else:
+                logger.error("未指定特征检测算法，默认使用SIFT")
+                detector = cv2.SIFT_create()
+                bf = cv2.BFMatcher()
+                lowe_ratio = 0.75
+                
+            # 检测特征点和计算描述符
+            keypoints_src, descriptors_src = detector.detectAndCompute(img_src_gray, None)
+            keypoints_target, descriptors_target = detector.detectAndCompute(img_target_gray, None)
+            
+            if debugEnabled:
+                # 保存带有特征点的图片以进行调试
+                # 但不每次都输出日志，减少日志冗余
+                img_src_kp = cv2.drawKeypoints(img_src_gray, keypoints_src, None)
+                img_target_kp = cv2.drawKeypoints(img_target_gray, keypoints_target, None)
+                
+                cv2.imwrite(os.path.join(debug_dir, f'src_keypoints_{filename_suffix}.png'), img_src_kp)
+                cv2.imwrite(os.path.join(debug_dir, f'target_keypoints_{filename_suffix}.png'), img_target_kp)
+            
+            if descriptors_src is None or descriptors_target is None or len(descriptors_src) == 0 or len(descriptors_target) == 0:
+                logger.warning("无法检测到特征点或计算描述符")
+                return good_matches, min_keypoints_required
+                
+            # 使用不同的匹配方法
+            if useSIFT:
+                # 对SIFT使用knnMatch并应用Lowe的比率测试
+                matches = bf.knnMatch(descriptors_src, descriptors_target, k=2)
+                
+                # 应用Lowe比率测试
+                for m, n in matches:
+                    if m.distance < lowe_ratio * n.distance:
+                        good_matches.append(m)
+            else:
+                # 对ORB使用普通匹配
+                matches = bf.match(descriptors_src, descriptors_target)
+                good_matches = sorted(matches, key=lambda x: x.distance)
+                
+            if debugEnabled:
+                # 根据图像大小动态调整图像尺寸，避免过大
+                match_img_height = max(img_src.shape[0], img_target.shape[0])
+                scale_factor = min(1.0, 800.0 / match_img_height) if match_img_height > 800 else 1.0
+                
+                # 只显示前N个最佳匹配，避免图像过于复杂
+                max_matches_to_show = 20
+                matches_to_draw = good_matches[:max_matches_to_show] if len(good_matches) > max_matches_to_show else good_matches
+                
+                # 绘制匹配结果
+                img_matches = cv2.drawMatches(img_src_gray, keypoints_src, img_target_gray, keypoints_target, matches_to_draw, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                
+                # 应用缩放
+                if scale_factor < 1.0:
+                    img_matches = cv2.resize(img_matches, None, fx=scale_factor, fy=scale_factor)
+                
+                # 保存匹配图像
+                cv2.imwrite(os.path.join(debug_dir, f'matches_{filename_suffix}.png'), img_matches)
+                
+                # 只输出一次关键的匹配信息，避免日志冗余
+                logger.debug(f"特征点数量 - 源图像: {len(keypoints_src)}, 目标图像: {len(keypoints_target)}, 匹配数: {len(good_matches)}/{min_keypoints_required}")
+            
+            # 如果特征点匹配不足，尝试模板匹配作为备选方案
             if len(good_matches) < minKeypoints:
+                logger.debug(f"特征点匹配不足({len(good_matches)}/{minKeypoints})，使用模板匹配备选")
+                
                 # 进行模板匹配
-                template_result = cv2.matchTemplate(img_target, img_src, cv2.TM_CCOEFF_NORMED)
+                template_result = cv2.matchTemplate(img_target_gray, img_src_gray, cv2.TM_CCOEFF_NORMED)
                 _, max_val, _, max_loc = cv2.minMaxLoc(template_result)
                 
-                logger.debug(f"特征点匹配不足({len(good_matches)}/{minKeypoints})，使用模板匹配备选，相关性得分:{max_val:.3f}")
-                
-                # 保存模板匹配结果
                 if debugEnabled:
                     # 保存相关性得分图
                     suffix = f"_{filename_suffix}" if filename_suffix else ""
@@ -327,31 +407,25 @@ class VisionUtils:
                     cv2.imwrite(corr_path, template_result * 255)
                     
                     # 在目标图像上绘制最佳匹配位置
-                    h, w = img_src.shape
+                    h, w = img_src_gray.shape
                     top_left = max_loc
                     bottom_right = (top_left[0] + w, top_left[1] + h)
-                    result_img = cv2.cvtColor(img_target.copy(), cv2.COLOR_GRAY2BGR) if len(img_target.shape) < 3 else img_target.copy()
+                    result_img = cv2.cvtColor(img_target_gray.copy(), cv2.COLOR_GRAY2BGR) if len(img_target_gray.shape) < 3 else img_target_gray.copy()
                     cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
                     pos_path = os.path.join(debug_dir, f"template_match_position{suffix}.png")
                     cv2.imwrite(pos_path, result_img)
-                    
-                    logger.debug(f"已保存模板匹配结果图像到 {debug_dir} 目录")
                 
-                # 修改逻辑：如果模板匹配分数超过0.9，直接判为匹配成功，不考虑特征点数量
-                if max_val >= 0.9:
-                    logger.info(f"模板匹配分数达到{max_val:.3f} >= 0.9，直接判定为匹配成功")
-                    matched = True
-                    # 返回足够数量的匹配点以通过检查
-                    return [1] * minKeypoints, minKeypoints
+                # 如果模板匹配分数高于阈值，则认为匹配成功
+                if max_val >= 0.8:  # 0.8是模板匹配的阈值
+                    logger.info(f"模板匹配分数达到{max_val:.3f} >= 0.8，判定为匹配成功")
+                    # 返回足够数量的匹配点以通过检查 
+                    return [1] * minKeypoints, min_keypoints_required
             
-            matched = len(good_matches) >= minKeypoints
-            logger.info(f"特征点匹配结果: {len(good_matches)}/{minKeypoints}, 匹配状态: {matched}")
-            
-            return good_matches, minKeypoints
+            return good_matches, min_keypoints_required
             
         except Exception as e:
-            logger.error(f"模板匹配过程中出错: {e}")
-            return [], minKeypoints
+            logger.error(f"特征匹配失败: {e}")
+            return good_matches, min_keypoints_required
 
     @staticmethod
     def matchTemplateSimple(img_target, img_src, threshold=None, debugEnabled=False, 
@@ -471,4 +545,15 @@ class VisionUtils:
                 return {"matched": False, "method": "error", "score": 0.0, "error": str(e)}
             else:
                 return False
+
+    def recognize_ammo_with_template(self, image, expected_value=None, debug_enabled=False, debug_dir=None):
+        """使用模板识别弹药数量"""
+        # 初始化带配置路径的识别器
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+        template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "digits")
+        
+        recognizer = AmmoTemplateRecognizer(templates_dir=template_dir, config_path=config_path)
+        return recognizer.recognize_number(image, expected_value, 
+                                          debugEnabled=debug_enabled, 
+                                          debug_dir=self.normalize_debug_dir(debug_dir))
 
