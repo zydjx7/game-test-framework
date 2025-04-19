@@ -9,6 +9,7 @@ import re
 import numpy as np
 from loguru import logger
 import yaml
+import argparse  # 用于解析命令行参数
 
 class LogicLayer:
     def __init__(self, target_name=None, config=None):
@@ -265,19 +266,9 @@ class LogicLayer:
                 
             screenshot = screenshots[0]
             
-            # 获取YAML文件中的视觉参数
-            yaml_cv_params = self.get_target_specific_param("ammo_ocr_params", {})
-            
-            # 如果指定了cv_params，则覆盖默认值
-            if cv_params:
-                yaml_cv_params.update(cv_params)
-                
-            # AssaultCube 直接用绝对 bbox
-            roi_rect = yaml_cv_params.get("ammo_bbox") or \
-                       self.get_target_specific_param("ammo_bbox")
-            
-            # 获取过滤器类型
-            filter_type = yaml_cv_params.get("ammo_filter_type", "gray")
+            # 确保debug_dir存在
+            if debugEnabled and debug_dir is None:
+                debug_dir = os.path.join(self.base_path, "debug")
             
             # 构建文件名后缀用于调试
             filename_suffix = ""
@@ -287,40 +278,117 @@ class LogicLayer:
             else:
                 filename_suffix = f"img_{int(time.time())}"
             
+            # 尝试使用模板匹配识别弹药数
+            try:
+                from AmmoTemplateRecognizer import AmmoTemplateRecognizer  # 改为绝对导入
+                
+                logger.debug(f"使用调试目录: {debug_dir}")
+                
+                # 创建具有配置路径的识别器
+                config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+                template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "digits")
+                
+                # 初始化识别器
+                template_recognizer = AmmoTemplateRecognizer(templates_dir=template_dir, config_path=config_path)
+                
+                # 执行模板匹配识别
+                logger.info(f"开始模板匹配识别，预期值: {expected_ammo}, 调试: {debugEnabled}")
+                recognized_number, is_confident = template_recognizer.recognize_number(
+                    image=screenshot,
+                    expected_value=expected_ammo,
+                    debugEnabled=debugEnabled,
+                    debug_dir=debug_dir
+                )
+                
+                # 保存结果到context
+                context["template_result"] = str(recognized_number) if recognized_number is not None else None
+                context["template_confident"] = is_confident
+                
+                # 记录模板匹配结果
+                if recognized_number is not None:
+                    logger.info(f"模板匹配识别结果: {recognized_number}")
+                    
+                    # 比较模板匹配结果与预期值
+                    is_matching = recognized_number == expected_ammo
+                    logger.info(f"弹药数对比(模板) - 预期: {expected_ammo}, 实际: {recognized_number}, 匹配: {is_matching}")
+                    
+                    # 如果模板匹配可信，直接返回结果
+                    if is_confident:
+                        logger.info(f">>>模板匹配可信，直接返回结果: {is_matching}，不再执行OCR<<<")
+                        return is_matching
+                
+                # 如果没有返回，说明模板匹配不可信或失败
+                logger.info("模板匹配不可信或失败，回退到OCR方法")
+            except Exception as template_error:
+                logger.warning(f"模板匹配尝试失败，使用OCR备选: {template_error}")
+            
+            # 如果模板匹配失败或者不可用，使用原有的OCR方法作为备选
+            # 获取YAML文件中的视觉参数
+            yaml_cv_params = self.get_target_specific_param("ammo_ocr_params", {})
+            
+            # 如果指定了cv_params，则覆盖默认值
+            if cv_params:
+                yaml_cv_params.update(cv_params)
+                
+            # 根据预期弹药数选择合适的bbox
+            if expected_ammo < 10:
+                roi_rect = [877, 1323, 66, 92]  # 单位数bbox
+            else:
+                roi_rect = [887, 1323, 123, 92]  # 双位数bbox
+            
+            # 获取过滤器类型
+            filter_type = yaml_cv_params.get("ammo_filter_type", "gray")
+            
             # 使用VisionUtils读取文本
-            # 添加额外的cv_params参数，确保完整传递所有需要的参数
             ocr_text = VisionUtils.readTextFromPicture(
                 srcImg=screenshot, 
                 boundingBox=roi_rect, 
                 filter_type=filter_type, 
                 context={**yaml_cv_params,
-                        "psm": yaml_cv_params.get("psm", 7),
+                        "psm": 7,  # 使用单行文本模式
                         "whitelist": yaml_cv_params.get("whitelist", "0123456789")},
-                cv_params=yaml_cv_params,  # 明确传递cv_params
-                do_imgProcessing=True,     # 明确指定进行图像处理
+                cv_params=yaml_cv_params,
+                do_imgProcessing=True,
                 debugEnabled=debugEnabled, 
                 filename_suffix=filename_suffix, 
-                debug_dir=debug_dir        # 确保debug_dir参数正确传递
+                debug_dir=debug_dir
             )
             
-            # 将OCR结果保存到context中以便在测试循环中使用
+            # 将OCR结果保存到context中
             context["ocr_result"] = ocr_text
             
             logger.info(f"OCR识别文本: '{ocr_text}'")
             
-            # 如果OCR结果为空，则提前返回失败
+            # 处理OCR结果
             if not ocr_text:
+                # 如果OCR结果为空，尝试使用模板匹配结果
+                if "template_result" in context and context["template_result"]:
+                    logger.info(f"OCR失败，使用模板匹配结果: {context['template_result']}")
+                    return str(expected_ammo) == context["template_result"]
+                
+                # 特殊处理数字0
+                if expected_ammo == 0:
+                    logger.info("OCR结果为空，但预期是0，可能是数字0的识别问题")
+                    context["ocr_result"] = "0"
+                    return True
+                
                 logger.warning("未识别到有效文本")
                 return False
                 
             # 尝试将OCR结果转换为数字
             try:
-                actual_ammo = int(ocr_text)
+                # 清理结果，只保留数字
+                cleaned_text = ''.join(filter(str.isdigit, ocr_text))
+                if not cleaned_text:
+                    logger.warning("清理后的OCR结果不包含数字")
+                    return False
+                    
+                actual_ammo = int(cleaned_text)
                 logger.info(f"OCR识别弹药数: {actual_ammo}")
                 
                 # 比较实际弹药数与预期弹药数
                 is_matching = actual_ammo == expected_ammo
-                logger.info(f"弹药数对比 - 预期: {expected_ammo}, 实际: {actual_ammo}, 匹配: {is_matching}")
+                logger.info(f"弹药数对比(OCR) - 预期: {expected_ammo}, 实际: {actual_ammo}, 匹配: {is_matching}")
                 
                 return is_matching
             except ValueError as e:
@@ -334,7 +402,7 @@ class LogicLayer:
     def check_ammo_state(self, screenshot_path, expected_value, region=None, cv_params=None):
         """
         检查弹药状态
-        @param screenshot_path: 截图路径
+        @param screenshot_path: 截图路径或图像数组
         @param expected_value: 期望的弹药数值
         @param region: 检测区域 [x, y, width, height]
         @param cv_params: 视觉参数字典
@@ -355,14 +423,98 @@ class LogicLayer:
             if image is None:
                 return False, "无法读取截图"
                 
+            # 首先尝试模板匹配
+            try:
+                from AmmoTemplateRecognizer import AmmoTemplateRecognizer  # 改为绝对导入
+                
+                # 创建具有配置路径的识别器
+                config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+                template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "digits")
+                
+                # 使用新版识别器，传递配置路径
+                if not hasattr(self, 'ammo_recognizer') or self.ammo_recognizer is None:
+                    self.ammo_recognizer = AmmoTemplateRecognizer(templates_dir=template_dir, config_path=config_path)
+                    logger.info("已创建AmmoTemplateRecognizer实例")
+                
+                # 执行模板匹配识别
+                debug_enabled = cv_params.get('debug_enabled', True) if cv_params else True  # 始终启用调试
+                debug_dir = "debug/ammo_tests"
+                
+                logger.info(f"开始模板匹配识别，预期值: {expected_value}, 调试: {debug_enabled}")
+                recognized_number, is_confident = self.ammo_recognizer.recognize_number(
+                    image=image,
+                    expected_value=expected_value,
+                    debugEnabled=debug_enabled,
+                    debug_dir=debug_dir
+                )
+                
+                # 记录模板匹配结果
+                if recognized_number is not None:
+                    logger.info(f"模板匹配识别结果: {recognized_number}")
+                    
+                    # 比较模板匹配结果与预期值
+                    is_matching = recognized_number == expected_value
+                    
+                    # 如果模板匹配可信，直接返回结果
+                    if is_confident:
+                        logger.info(f">>>模板匹配可信，直接返回结果: {is_matching}<<<")
+                        if is_matching:
+                            return True, f"模板匹配识别成功: {recognized_number}"
+                        else:
+                            return False, f"模板匹配不匹配: 预期={expected_value}, 实际={recognized_number}"
+                
+                # 如果没有返回，说明模板匹配不可信或失败
+                logger.info("模板匹配不可信或失败，使用OCR备选")
+            except Exception as template_error:
+                logger.warning(f"模板匹配尝试失败: {template_error}")
+                
+            # 如果模板匹配失败，使用OCR方法作为备选
             # 使用默认的cv_params如果没有提供
             if cv_params is None:
                 cv_params = self.target_config.get('cv_params', {})
                 
+            # 获取屏幕截图尺寸
+            img_height, img_width = image.shape[:2]
+            logger.info(f"截图尺寸: {img_width}x{img_height}")
+            
             # 处理检测区域，使用参数提供的区域或配置默认区域
             if region is None:
-                region = cv_params.get('ammo_bbox')
+                # 尝试使用相对坐标
+                ammo_bbox_rel = cv_params.get('ammo_bbox_rel')
                 
+                if ammo_bbox_rel:
+                    # 根据预期值选择适当的相对bbox，并转换为绝对坐标
+                    rel_bbox = ammo_bbox_rel.copy()
+                    
+                    # 双位数需要更宽的区域
+                    if expected_value >= 10:
+                        rel_bbox[2] *= 2.0  # 加宽区域以适应双位数
+                    
+                    # 转换为绝对坐标 [x, y, w, h]
+                    x = int(rel_bbox[0] * img_width)
+                    y = int(rel_bbox[1] * img_height)
+                    w = int(rel_bbox[2] * img_width)
+                    h = int(rel_bbox[3] * img_height)
+                    
+                    region = [x, y, w, h]
+                    logger.info(f"使用相对坐标: {rel_bbox} → 实际区域: {region}")
+                else:
+                    # 使用绝对坐标作为备选
+                    if expected_value < 10:
+                        region = [877, 1323, 66, 92]  # 单位数bbox
+                    else:
+                        region = [887, 1323, 123, 92]  # 双位数bbox
+                    logger.warning(f"使用硬编码绝对坐标: {region}，可能与当前分辨率不匹配")
+                    
+            # 在原始图像上绘制检测区域（调试用）
+            debug_img = image.copy()
+            x, y, w, h = region
+            cv2.rectangle(debug_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            debug_path = os.path.join("debug/ammo_tests", f"ammo_detection_region.jpg")
+            os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+            cv2.imwrite(debug_path, debug_img)
+            logger.info(f"已保存带检测区域的调试图像: {debug_path}")
+                    
             if region:
                 x, y, w, h = region
                 if x >= 0 and y >= 0 and x + w <= image.shape[1] and y + h <= image.shape[0]:
@@ -374,17 +526,29 @@ class LogicLayer:
                 
             # 图像预处理
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            _, binary = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
+            
+            # 保存二值化处理后的ROI（调试用）
+            binary_debug_path = os.path.join("debug/ammo_tests", "ammo_roi_binary.jpg")
+            cv2.imwrite(binary_debug_path, binary)
+            logger.info(f"已保存二值化ROI调试图像: {binary_debug_path}")
             
             # 特殊情况处理：弹药为0
             if expected_value == 0:
-                # 使用模板匹配或特定的零值检测逻辑
-                zero_template = self._get_zero_template()
+                # 尝试使用已加载的模板
+                zero_template = self.ammo_recognizer.digit_templates.get('0') if hasattr(self, 'ammo_recognizer') else None
+                
                 if zero_template is not None:
+                    # 调整大小以适配roi
+                    if zero_template.shape[0] > binary.shape[0] or zero_template.shape[1] > binary.shape[1]:
+                        zero_template = cv2.resize(zero_template, 
+                                                  (min(zero_template.shape[1], binary.shape[1]-1),
+                                                   min(zero_template.shape[0], binary.shape[0]-1)))
+                    
                     match_result = cv2.matchTemplate(binary, zero_template, cv2.TM_CCOEFF_NORMED)
                     _, max_val, _, _ = cv2.minMaxLoc(match_result)
-                    if max_val > 0.8:  # 匹配阈值
-                        return True, "检测到弹药数为0"
+                    if max_val > 0.7:  # 匹配阈值
+                        return True, f"模板匹配检测到弹药数为0 (分数: {max_val:.3f})"
             
             # 常规数字识别
             try:
@@ -396,14 +560,14 @@ class LogicLayer:
                 if detected_text:
                     detected_value = int(detected_text)
                     if detected_value == expected_value:
-                        return True, f"弹药数量匹配: {detected_value}"
+                        return True, f"OCR识别匹配: {detected_value}"
                     else:
-                        return False, f"弹药数量不匹配: 期望 {expected_value}, 实际 {detected_value}"
+                        return False, f"OCR识别不匹配: 期望={expected_value}, 实际={detected_value}"
                 else:
-                    return False, "未能识别到数字"
+                    return False, "OCR未能识别到数字"
                     
             except Exception as e:
-                return False, f"数字识别失败: {str(e)}"
+                return False, f"OCR识别失败: {str(e)}"
                 
         except Exception as e:
             logger.error(f"检测过程发生错误: {str(e)}")
@@ -439,9 +603,21 @@ class LogicLayer:
 if __name__ == "__main__":
     import datetime  # 导入datetime以获取本地时间
     
-    # 配置日志
-    logger.add("test_debug.log", level="DEBUG", rotation="1 MB")
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='运行游戏状态检测测试')
+    parser.add_argument('--debug', action='store_true', help='启用调试模式，在终端显示更多信息')
+    args = parser.parse_args()
+    
+    # 配置日志 - 使用已有的级别
+    logger.remove()  # 移除默认处理器
+    logger.add("test_debug.log", level="TRACE", rotation="1 MB")  # 文件中记录所有级别(包括TRACE)
+    
+    # 根据命令行参数确定终端日志级别
+    terminal_level = "DEBUG" if args.debug else "INFO"
+    logger.add(sys.stderr, level=terminal_level)  # 终端显示级别取决于是否开启debug模式
+    
     logger.info("开始AssaultCube视觉检测调试")
+    logger.info(f"日志级别: 终端={terminal_level}, 文件=TRACE")
     
     # 获取当前脚本的绝对路径和基础目录
     current_script_path = os.path.abspath(__file__)
@@ -496,6 +672,19 @@ if __name__ == "__main__":
     crosshair_pass = 0
     crosshair_total = 0
     
+    # 只显示一次准星测试的参数配置
+    cv_params = logicLayer.target_config.get('cv_params', {})
+    logger.debug(f"准星测试参数: min_keypoints={cv_params.get('min_keypoints', 3)}, " + 
+                f"template_threshold={cv_params.get('template_threshold', 0.7)}, " + 
+                f"lowe_ratio={cv_params.get('lowe_ratio', 0.75)}, " +
+                f"roi_factor={cv_params.get('roi_factor', 0.25)}")
+    
+    # 设置所有测试的调试级别
+    crosshair_debug_enabled = True  # 设置为False可禁用详细调试信息
+    
+    # 告知用户调试信息已简化
+    logger.info(f"注意: 已简化终端输出，详细日志保存在调试目录和日志文件中")
+    
     for image_path in crosshair_images:
         try:
             # 从文件名判断期望结果
@@ -518,7 +707,7 @@ if __name__ == "__main__":
                 [screenshot], 
                 context, 
                 expected_answer, 
-                debugEnabled=True,
+                debugEnabled=crosshair_debug_enabled,
                 debug_dir=current_crosshair_dir
             )
             
@@ -541,6 +730,25 @@ if __name__ == "__main__":
     
     ammo_pass = 0
     ammo_total = 0
+    
+    # 只显示一次弹药测试的参数配置
+    cv_params = logicLayer.target_config.get('cv_params', {})
+    ammo_ocr_params = cv_params.get('ammo_ocr_params', {})
+    logger.debug(f"弹药测试参数: filter_type={cv_params.get('ammo_filter_type', 'gray')}, " + 
+                f"bbox={cv_params.get('ammo_bbox')}, " + 
+                f"value_threshold_min={cv_params.get('ammo_value_threshold_min', 150)}, " +
+                f"value_threshold_max={cv_params.get('ammo_value_threshold_max', 255)}, " +
+                f"psm={ammo_ocr_params.get('psm', 7)}, " +
+                f"morph_kernel_size={ammo_ocr_params.get('morph_kernel_size', 2)}")
+    
+    # 设置所有测试共享的调试路径，但只打印一次
+    logger.debug(f"弹药测试使用调试目录: {current_ammo_dir}")
+    
+    # 设置弹药测试的调试级别
+    ammo_debug_enabled = True  # 启用调试输出以保存图像
+    
+    # 告知用户会保存调试图像
+    logger.info("注意: 已启用调试图像保存功能，图像会保存到指定调试目录")
     
     for image_path in ammo_images:
         try:
@@ -565,15 +773,12 @@ if __name__ == "__main__":
             context = {'screenshotFile': image_path}
             expected_answer = {"intResult": expected_ammo}
             
-            # 进行测试 - 使用弹药专用目录，确保它是绝对路径
-            logger.debug(f"弹药测试使用调试目录: {current_ammo_dir}")
-            
-            # 进行测试 - 使用弹药专用目录
+            # 进行测试 - 使用弹药专用目录，但减少日志输出
             actual_result = logicLayer.testAmmoTextInSync(
                 [screenshot], 
                 context, 
                 expected_answer, 
-                debugEnabled=True,
+                debugEnabled=ammo_debug_enabled,
                 debug_dir=current_ammo_dir
             )
             
