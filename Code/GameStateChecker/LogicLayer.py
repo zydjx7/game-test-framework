@@ -10,6 +10,7 @@ import numpy as np
 from loguru import logger
 import yaml
 import argparse  # 用于解析命令行参数
+import datetime  # 导入datetime以获取本地时间
 
 class LogicLayer:
     def __init__(self, target_name=None, config=None):
@@ -601,16 +602,29 @@ class LogicLayer:
             return None
 
 if __name__ == "__main__":
-    import datetime  # 导入datetime以获取本地时间
-    
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='运行游戏状态检测测试')
     parser.add_argument('--debug', action='store_true', help='启用调试模式，在终端显示更多信息')
     args = parser.parse_args()
     
+    # 获取当前日期和时间
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # 获取当前脚本的绝对路径和基础目录
+    current_script_path = os.path.abspath(__file__)
+    base_dir = os.path.dirname(current_script_path)
+    
+    # 创建日志目录
+    logs_dir = os.path.join(base_dir, "debug", "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    # 生成带有日期的日志文件名
+    log_file_name = f"{current_time}_test_debug.log"
+    log_file_path = os.path.join(logs_dir, log_file_name)
+    
     # 配置日志 - 使用已有的级别
     logger.remove()  # 移除默认处理器
-    logger.add("test_debug.log", level="TRACE", rotation="1 MB")  # 文件中记录所有级别(包括TRACE)
+    logger.add(log_file_path, level="TRACE", rotation="1 MB")  # 文件中记录所有级别(包括TRACE)
     
     # 根据命令行参数确定终端日志级别
     terminal_level = "DEBUG" if args.debug else "INFO"
@@ -618,10 +632,7 @@ if __name__ == "__main__":
     
     logger.info("开始AssaultCube视觉检测调试")
     logger.info(f"日志级别: 终端={terminal_level}, 文件=TRACE")
-    
-    # 获取当前脚本的绝对路径和基础目录
-    current_script_path = os.path.abspath(__file__)
-    base_dir = os.path.dirname(current_script_path)
+    logger.info(f"日志文件路径: {log_file_path}")
     
     # 加载配置
     config_path = os.path.join(base_dir, "config.yaml")
@@ -637,7 +648,6 @@ if __name__ == "__main__":
     logger.info(f"当前测试目标: {active_target}")
     
     # 创建带有本地时间戳的调试目录结构
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # 注意：使用绝对路径确保调试目录位置正确
     debug_base_dir = os.path.join(base_dir, "debug")
     

@@ -16,14 +16,23 @@ class TestGenerator:
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             logger.error("未找到API密钥，请设置OPENAI_API_KEY环境变量")
-            raise ValueError("No OpenAI API key found in parameters or environment variables")
+            raise ValueError("No API key found in parameters or environment variables")
         
-        # 从环境变量获取模型名称，默认为gpt-4o
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
+        # 从环境变量获取模型名称，默认为deepseek-chat
+        self.model = os.getenv("OPENAI_MODEL", "deepseek-chat")
         logger.info(f"使用模型: {self.model}")
         
+        # 获取API类型和基础URL
+        self.api_type = os.getenv("API_TYPE", "deepseek")
+        self.base_url = os.getenv("OPENAI_BASE_URL", "")
+        
         # 创建OpenAI客户端
-        self.client = OpenAI(api_key=self.api_key)
+        client_args = {"api_key": self.api_key}
+        if self.base_url:
+            client_args["base_url"] = self.base_url
+            logger.info(f"使用自定义API基础URL: {self.base_url}")
+            
+        self.client = OpenAI(**client_args)
         
     def create_test_prompt(self, test_requirement):
         return f"""
@@ -48,7 +57,7 @@ class TestGenerator:
     
     def generate_test_case(self, requirement):
         try:
-            logger.info(f"开始生成测试用例，需求: {requirement[:50]}...")
+            logger.info(f"开始生成测试用例，需求: {requirement[:50]}...，使用{self.api_type} API")
             
             response = self.client.chat.completions.create(
                 model=self.model,

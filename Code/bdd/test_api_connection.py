@@ -10,6 +10,11 @@ logger.remove()
 logger.add(sys.stdout, level="INFO")
 logger.add("logs/api_test.log", level="DEBUG", rotation="1 MB")
 
+# DeepSeek API基础URL
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+# 默认模型
+DEFAULT_MODEL = "deepseek-chat"
+
 def load_env_safe():
     """安全加载环境变量，处理不同编码"""
     try:
@@ -47,33 +52,42 @@ def load_env_safe():
         logger.error("所有编码尝试都失败了")
         return False
 
-# 获取模型名称（默认为gpt-4o）
-MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o")
-
 def test_connection():
-    """测试OpenAI API连接"""
-    logger.info(f"开始测试OpenAI API连接，使用模型: {MODEL_NAME}")
+    """测试API连接"""
+    # 加载环境变量
+    load_env_safe()
     
-    # 获取API密钥
+    # 获取API配置
     api_key = os.getenv("OPENAI_API_KEY")
+    model_name = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
+    base_url = os.getenv("OPENAI_BASE_URL", "")
+    api_type = os.getenv("API_TYPE", "deepseek")
+    
+    logger.info(f"开始测试API连接，API类型: {api_type}，使用模型: {model_name}")
+    
     if not api_key:
-        logger.error("未找到OPENAI_API_KEY环境变量")
+        logger.error("未找到API密钥环境变量")
         return False
         
     # 创建客户端
-    client = OpenAI(api_key=api_key)
+    client_args = {"api_key": api_key}
+    if base_url:
+        client_args["base_url"] = base_url
+        logger.info(f"使用API基础URL: {base_url}")
+    
+    client = OpenAI(**client_args)
     
     try:
         # 测试API调用
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=model_name,
             messages=[
                 {"role": "system", "content": "你是一个游戏测试助手"},
                 {"role": "user", "content": "返回'API连接成功'"}
             ],
             max_tokens=10
         )
-        logger.info(f"API调用成功！使用模型: {MODEL_NAME}")
+        logger.info(f"API调用成功！使用{api_type} API，模型: {model_name}")
         logger.info(f"响应内容: {response.choices[0].message.content}")
         return True
     except Exception as e:
@@ -84,8 +98,16 @@ if __name__ == "__main__":
     # 安全加载环境变量
     if not load_env_safe():
         logger.warning("从命令行输入API密钥")
-        os.environ["OPENAI_API_KEY"] = input("请输入你的OpenAI API密钥: ")
-        os.environ["OPENAI_MODEL"] = input("请输入模型名称(默认gpt-4o): ") or "gpt-4o"
+        os.environ["OPENAI_API_KEY"] = input("请输入你的API密钥: ")
+        api_type = input("请输入API类型(openai或deepseek，默认deepseek): ") or "deepseek"
+        os.environ["API_TYPE"] = api_type
+        
+        if api_type.lower() == "deepseek":
+            os.environ["OPENAI_BASE_URL"] = DEEPSEEK_BASE_URL
+            os.environ["OPENAI_MODEL"] = input(f"请输入模型名称(默认{DEFAULT_MODEL}): ") or DEFAULT_MODEL
+        else:
+            os.environ["OPENAI_BASE_URL"] = ""
+            os.environ["OPENAI_MODEL"] = input("请输入模型名称(默认gpt-4o): ") or "gpt-4o"
     
     success = test_connection()
     if success:

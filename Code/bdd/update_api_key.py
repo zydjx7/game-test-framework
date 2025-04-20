@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-更新OpenAI API密钥
+更新API密钥设置（支持OpenAI和DeepSeek）
 """
 
 import os
@@ -17,6 +17,11 @@ from loguru import logger
 logger.remove()
 logger.add(sys.stdout, level="INFO")
 logger.add("logs/api_update.log", level="DEBUG", rotation="1 MB")
+
+# DeepSeek API基础URL
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+# 默认模型
+DEFAULT_MODEL = "deepseek-chat"
 
 def load_env_safe():
     """安全加载.env文件，处理不同编码格式"""
@@ -55,8 +60,11 @@ def load_env_safe():
         logger.error("所有编码尝试都失败了")
         return False
 
-def update_api_key(api_key):
-    """更新.env文件中的API密钥"""
+def update_api_key(api_key, api_type="deepseek"):
+    """更新.env文件中的API密钥
+    @param api_key: API密钥
+    @param api_type: API类型，可选值：'openai'或'deepseek'，默认为'deepseek'
+    """
     # 首先尝试找到现有的.env文件
     dotenv_path = find_dotenv()
     
@@ -80,7 +88,9 @@ def update_api_key(api_key):
         dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
         with open(dotenv_path, 'w', encoding='utf-8') as f:
             f.write(f"OPENAI_API_KEY={api_key}\n")
-            f.write(f"OPENAI_MODEL=gpt-4o\n")  # 默认添加模型环境变量
+            f.write(f"OPENAI_BASE_URL={DEEPSEEK_BASE_URL if api_type == 'deepseek' else ''}\n")
+            f.write(f"OPENAI_MODEL={DEFAULT_MODEL if api_type == 'deepseek' else 'gpt-4o'}\n")
+            f.write(f"API_TYPE={api_type}\n")
         logger.info(f"创建了新的.env文件(UTF-8): {dotenv_path}")
     else:
         # 如果文件存在，以检测到的编码读取内容
@@ -93,14 +103,22 @@ def update_api_key(api_key):
             updated_content = []
             api_key_found = False
             model_found = False
+            base_url_found = False
+            api_type_found = False
             
             for line in lines:
                 if line.startswith("OPENAI_API_KEY="):
                     updated_content.append(f"OPENAI_API_KEY={api_key}")
                     api_key_found = True
                 elif line.startswith("OPENAI_MODEL="):
-                    updated_content.append(f"OPENAI_MODEL=gpt-4o")  # 默认更新为gpt-4o
+                    updated_content.append(f"OPENAI_MODEL={DEFAULT_MODEL if api_type == 'deepseek' else 'gpt-4o'}")
                     model_found = True
+                elif line.startswith("OPENAI_BASE_URL="):
+                    updated_content.append(f"OPENAI_BASE_URL={DEEPSEEK_BASE_URL if api_type == 'deepseek' else ''}")
+                    base_url_found = True
+                elif line.startswith("API_TYPE="):
+                    updated_content.append(f"API_TYPE={api_type}")
+                    api_type_found = True
                 else:
                     updated_content.append(line)
             
@@ -108,20 +126,26 @@ def update_api_key(api_key):
             if not api_key_found:
                 updated_content.append(f"OPENAI_API_KEY={api_key}")
             if not model_found:
-                updated_content.append(f"OPENAI_MODEL=gpt-4o")
+                updated_content.append(f"OPENAI_MODEL={DEFAULT_MODEL if api_type == 'deepseek' else 'gpt-4o'}")
+            if not base_url_found:
+                updated_content.append(f"OPENAI_BASE_URL={DEEPSEEK_BASE_URL if api_type == 'deepseek' else ''}")
+            if not api_type_found:
+                updated_content.append(f"API_TYPE={api_type}")
             
             # 写回文件，保持原有编码
             with codecs.open(dotenv_path, 'w', encoding=current_encoding) as f:
                 f.write("\n".join(updated_content))
             
-            logger.info(f"更新了API密钥，保持原编码({current_encoding}): {dotenv_path}")
+            logger.info(f"更新了API密钥({api_type})，保持原编码({current_encoding}): {dotenv_path}")
         except Exception as e:
             logger.error(f"更新API密钥失败: {e}")
             return False
     
     # 重新加载环境变量
     os.environ["OPENAI_API_KEY"] = api_key
-    os.environ["OPENAI_MODEL"] = "gpt-4o"
+    os.environ["OPENAI_MODEL"] = DEFAULT_MODEL if api_type == 'deepseek' else 'gpt-4o'
+    os.environ["OPENAI_BASE_URL"] = DEEPSEEK_BASE_URL if api_type == 'deepseek' else ''
+    os.environ["API_TYPE"] = api_type
     
     return True
 
@@ -132,14 +156,20 @@ def test_api_key():
     
     # 获取API密钥和模型名称
     api_key = os.getenv("OPENAI_API_KEY")
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o")
+    model_name = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
+    base_url = os.getenv("OPENAI_BASE_URL", "")
+    api_type = os.getenv("API_TYPE", "deepseek")
     
     if not api_key:
         logger.error("错误：未找到API密钥，请确保.env文件中设置了OPENAI_API_KEY")
         return False
     
     # 创建客户端
-    client = OpenAI(api_key=api_key)
+    client_args = {"api_key": api_key}
+    if base_url:
+        client_args["base_url"] = base_url
+        
+    client = OpenAI(**client_args)
     
     # 测试API调用
     try:
@@ -148,7 +178,7 @@ def test_api_key():
             messages=[{"role": "user", "content": "你好"}],
             max_tokens=5
         )
-        logger.info(f"API密钥设置成功！使用模型: {model_name}")
+        logger.info(f"API密钥设置成功！使用{api_type} API，模型: {model_name}")
         logger.info(f"收到回复: {response.choices[0].message.content}")
         return True
     except Exception as e:
@@ -206,9 +236,10 @@ def update_model(model_name):
     return False
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="更新OpenAI API设置")
+    parser = argparse.ArgumentParser(description="更新API设置")
     parser.add_argument("--key", help="新的API密钥")
-    parser.add_argument("--model", help="指定使用的模型，例如gpt-4o, gpt-3.5-turbo等")
+    parser.add_argument("--model", help="指定使用的模型，例如deepseek-chat, deepseek-reasoner等")
+    parser.add_argument("--api-type", choices=["openai", "deepseek"], default="deepseek", help="指定API类型，默认为deepseek")
     parser.add_argument("--test", action="store_true", help="测试API密钥是否有效")
     parser.add_argument("--create-utf8", action="store_true", help="创建一个新的UTF-8编码的.env文件")
     
@@ -220,20 +251,24 @@ if __name__ == "__main__":
             # 先加载现有环境变量
             load_env_safe()
             api_key = os.getenv("OPENAI_API_KEY", "")
-            model = os.getenv("OPENAI_MODEL", "gpt-4o")
+            model = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
+            base_url = os.getenv("OPENAI_BASE_URL", DEEPSEEK_BASE_URL)
+            api_type = os.getenv("API_TYPE", "deepseek")
             
             # 创建新文件
             dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
             with open(dotenv_path, 'w', encoding='utf-8') as f:
                 f.write(f"OPENAI_API_KEY={api_key}\n")
                 f.write(f"OPENAI_MODEL={model}\n")
+                f.write(f"OPENAI_BASE_URL={base_url}\n")
+                f.write(f"API_TYPE={api_type}\n")
             logger.info(f"已创建UTF-8编码的.env文件: {dotenv_path}")
         except Exception as e:
             logger.error(f"创建UTF-8编码的.env文件失败: {e}")
     
     # 更新API密钥
-    if args.key and update_api_key(args.key):
-        logger.info("API密钥已成功更新")
+    if args.key and update_api_key(args.key, args.api_type):
+        logger.info(f"API密钥已成功更新，API类型: {args.api_type}")
     
     # 更新模型名称
     if args.model and update_model(args.model):

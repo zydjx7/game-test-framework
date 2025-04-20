@@ -18,11 +18,18 @@ def test_api_key():
         logger.error("错误：未找到API密钥，请确保.env文件中设置了OPENAI_API_KEY")
         return False
     
-    # 获取模型名称（默认为gpt-4o）
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o")
+    # 获取模型名称、基础URL和API类型
+    model_name = os.getenv("OPENAI_MODEL", "deepseek-chat")
+    base_url = os.getenv("OPENAI_BASE_URL", "")
+    api_type = os.getenv("API_TYPE", "deepseek")
     
     # 创建客户端
-    client = OpenAI(api_key=api_key)
+    client_args = {"api_key": api_key}
+    if base_url:
+        client_args["base_url"] = base_url
+        logger.info(f"使用API基础URL: {base_url}")
+        
+    client = OpenAI(**client_args)
     
     # 测试API调用
     try:
@@ -31,7 +38,7 @@ def test_api_key():
             messages=[{"role": "user", "content": "Hello"}],
             max_tokens=5
         )
-        logger.info(f"API密钥设置成功！使用模型:{model_name}")
+        logger.info(f"API密钥设置成功！使用{api_type} API，模型:{model_name}")
         logger.info(f"收到回复: {response.choices[0].message.content}")
         return True
     except Exception as e:
