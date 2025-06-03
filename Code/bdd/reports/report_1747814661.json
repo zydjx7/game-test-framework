@@ -1,0 +1,7 @@
+{
+    "status": "error",
+    "timestamp": "2025-05-21 17:04:21",
+    "message": "无法生成测试用例",
+    "generation_time": 31.520788431167603,
+    "target": "assaultcube"
+}

@@ -1,5 +1,39 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# LLM集成
+
+本框架集成了大型语言模型(LLM)用于自动生成测试场景和分析测试结果。
+
+## 主要文件
+
+- [src/llm/gpt_client.py](mdc:src/llm/gpt_client.py) - GPT客户端，处理与OpenAI API的通信
+- [Code/bdd/test_generator](mdc:Code/bdd/test_generator) - 测试生成器，使用LLM创建测试场景
+- [Code/bdd/test_api_connection.py](mdc:Code/bdd/test_api_connection.py) - API连接测试
+- [Code/bdd/update_api_key.py](mdc:Code/bdd/update_api_key.py) - API密钥更新工具
+
+## 功能特点
+
+1. 自动测试场景生成 - 从游戏描述生成Gherkin测试场景
+2. 智能测试步骤定义 - 根据游戏机制自动设计测试步骤
+3. 测试结果分析 - 解释测试失败原因并提供改进建议
+
+## LLM提供商
+
+本项目支持多种LLM提供商：
+- OpenAI (默认)
+- [DeepSeek](mdc:.cursor/rules/12-deepseek-api-integration.mdc) - 查看DeepSeek API配置详情
+
+## 使用方式
+
+1. 设置API密钥：
+   ```bash
+   python Code/bdd/update_api_key.py --key YOUR_API_KEY --test
+   ```
+
+2. 使用LLM生成测试：
+   ```bash
+   python Code/bdd/run_tests.py --mode generated --req "测试武器系统"
+   ```

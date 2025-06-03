@@ -28,13 +28,39 @@ class VisionUtils:
             if tesseract_path:
                 pytesseract.pytesseract.tesseract_cmd = tesseract_path
     except Exception as e:
-        print(f"警告：无法加载Tesseract配置: {e}")
+        print(f"Warning: Unable to load Tesseract configuration: {e}")
         cross_threshold = 0.6  # 默认模板匹配阈值
         min_keypoints = 3     # 默认最小特征点数
     
     # 根路径和默认调试目录
     base_path = os.path.dirname(os.path.abspath(__file__))
     default_debug_dir = os.path.join(base_path, "debug")
+    
+    @staticmethod
+    def ensure_image_format(image):
+        """
+        确保图像格式兼容于cv2.imwrite
+        @param image: 输入图像
+        @return: 转换后的兼容格式图像
+        """
+        if image is None:
+            return None
+            
+        # 检查图像深度
+        if image.dtype != np.uint8:
+            # 转换为8位无符号整数格式
+            if np.issubdtype(image.dtype, np.floating):
+                # 如果是浮点型，先归一化到0-255范围
+                min_val = np.min(image)
+                max_val = np.max(image)
+                if max_val > min_val:
+                    # 避免除以零
+                    image = 255.0 * (image - min_val) / (max_val - min_val)
+            
+            # 转换为uint8类型
+            image = image.astype(np.uint8)
+        
+        return image
     
     @staticmethod
     def normalize_debug_dir(debug_dir):
@@ -55,7 +81,7 @@ class VisionUtils:
         os.makedirs(debug_dir, exist_ok=True)
         
         # 使用DEBUG级别记录目录信息
-        logger.debug(f"使用调试目录: {debug_dir}")
+        logger.debug(f"Using debug directory: {debug_dir}")
         return debug_dir
 
     @staticmethod
@@ -79,7 +105,7 @@ class VisionUtils:
             if debugEnabled:
                 debug_dir = VisionUtils.normalize_debug_dir(debug_dir)
                 # 保留处理图像文件的debug信息
-                logger.debug(f"处理图像文件: {filename_suffix}")
+                logger.debug(f"Processing image file: {filename_suffix}")
             
             # 提取ROI区域
             x, y, w, h = boundingBox
@@ -99,7 +125,7 @@ class VisionUtils:
                 
             # 检查ROI是否为空
             if roi is None or roi.size == 0:
-                logger.warning("ROI区域为空或无效，无法进行OCR识别")
+                logger.warning("ROI area is empty or invalid, cannot perform OCR recognition")
                 return ""
             
             # 初始化参数
@@ -135,7 +161,7 @@ class VisionUtils:
                 if debugEnabled:
                     # 只在特定条件下输出HSV参数信息，使用DEBUG级别
                     if "hsv_debug_output" not in context:
-                        logger.debug(f"使用HSV过滤: H({hue_min}-{hue_max}), S({sat_min}-{sat_max}), V({val_min}-{val_max})")
+                        logger.debug(f"Using HSV filter: H({hue_min}-{hue_max}), S({sat_min}-{sat_max}), V({val_min}-{val_max})")
                         context["hsv_debug_output"] = True
                     
                     # 保存HSV通道图像用于调试
@@ -158,7 +184,7 @@ class VisionUtils:
                 if debugEnabled:
                     # 简化，只在特定条件下输出参数信息，使用DEBUG级别
                     if "value_debug_output" not in context:
-                        logger.debug(f"使用Value过滤: ({value_min}-{value_max})")
+                        logger.debug(f"Using Value filter: ({value_min}-{value_max})")
                         context["value_debug_output"] = True
                     
                     # 保存灰度图像用于调试
@@ -195,12 +221,12 @@ class VisionUtils:
                 if scale_factor > 1.0:
                     binary = cv2.resize(binary, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_CUBIC)
                     if debugEnabled:
-                        logger.debug(f"应用图像放大: 缩放因子 {scale_factor}")
+                        logger.debug(f"Applying image enlargement: scale factor {scale_factor}")
                 
                 if debugEnabled:
                     # 只在第一次输出形态学处理信息，使用DEBUG级别
                     if "morph_info_output" not in context:
-                        logger.debug(f"应用了形态学处理: 膨胀({ksize}x{ksize}内核,{iters}次迭代) + 闭操作({ksize}x{ksize}内核,{iters}次迭代)")
+                        logger.debug(f"Applied morphological processing: dilation({ksize}x{ksize} kernel, {iters} iterations) + closing operation({ksize}x{ksize} kernel, {iters} iterations)")
                         context["morph_info_output"] = True
             
             if debugEnabled and binary is not None:
@@ -210,7 +236,7 @@ class VisionUtils:
             
             # 检查二值图像是否为有效
             if binary is None:
-                logger.error("二值化图像生成失败")
+                logger.error("Binary image generation failed")
                 return ""
             
             # 从ammo_ocr_params获取OCR参数
@@ -235,7 +261,7 @@ class VisionUtils:
                 
                 # 类型检查，确保返回值是字符串而不是布尔值
                 if isinstance(text, bool):
-                    logger.warning(f"OCR返回了一个布尔值 ({text}) 而不是文本，将其转换为空字符串")
+                    logger.warning(f"OCR returned a boolean value ({text}) instead of text, converting to empty string")
                     text = ""
                     
                 # 删除所有非数字字符(包括句点、空格等)
@@ -243,7 +269,7 @@ class VisionUtils:
                 text = re.sub(r'[^0-9]', '', text) if text else ""
                 
                 if debugEnabled:
-                    logger.info(f"OCR识别结果: '{text}' (过滤类型: {filter_type}, PSM模式: {psm})")
+                    logger.info(f"OCR recognition result: '{text}' (filter type: {filter_type}, PSM mode: {psm})")
                     
                 # 记录OCR结果到context（用于调试和结果传递）
                 if context is not None:
@@ -253,13 +279,13 @@ class VisionUtils:
                 return "" if text is None else text
                 
             except Exception as inner_e:
-                logger.warning(f"Tesseract OCR处理时发生内部错误: {inner_e}")
+                logger.warning(f"Internal error occurred during Tesseract OCR processing: {inner_e}")
                 if context is not None:
-                    context["ocr_error"] = f"内部OCR错误: {inner_e}"
+                    context["ocr_error"] = f"Internal OCR error: {inner_e}"
                 return ""
             
         except Exception as e:
-            logger.error(f"OCR文本识别失败: {e}")
+            logger.error(f"OCR text recognition failed: {e}")
             # 记录错误到context
             if context is not None:
                 context["ocr_error"] = str(e)
@@ -296,7 +322,7 @@ class VisionUtils:
             
             # 检查图像尺寸和通道
             if img_src is None or img_target is None:
-                logger.error("源图像或目标图像为空")
+                logger.error("Source image or target image is empty")
                 return good_matches, min_keypoints_required
                 
             # 确保输入图像是灰度图
@@ -319,7 +345,7 @@ class VisionUtils:
                 
                 if debugEnabled:
                     # 只在开启调试且指定ORB算法时输出一次，避免重复日志
-                    logger.debug("使用ORB特征检测算法")
+                    logger.debug("Using ORB feature detection algorithm")
                 
             elif useSIFT:
                 # 使用SIFT检测算法
@@ -332,9 +358,9 @@ class VisionUtils:
                     # 只在特定条件下输出算法选择日志，避免重复
                     if "sift_info_output" not in globals():
                         globals()["sift_info_output"] = True
-                        logger.debug("使用SIFT特征检测算法")
+                        logger.debug("Using SIFT feature detection algorithm")
             else:
-                logger.error("未指定特征检测算法，默认使用SIFT")
+                logger.error("No feature detection algorithm specified, using SIFT by default")
                 detector = cv2.SIFT_create()
                 bf = cv2.BFMatcher()
                 lowe_ratio = 0.75
@@ -349,11 +375,15 @@ class VisionUtils:
                 img_src_kp = cv2.drawKeypoints(img_src_gray, keypoints_src, None)
                 img_target_kp = cv2.drawKeypoints(img_target_gray, keypoints_target, None)
                 
+                # 确保图像格式兼容
+                img_src_kp = VisionUtils.ensure_image_format(img_src_kp)
+                img_target_kp = VisionUtils.ensure_image_format(img_target_kp)
+                
                 cv2.imwrite(os.path.join(debug_dir, f'src_keypoints_{filename_suffix}.png'), img_src_kp)
                 cv2.imwrite(os.path.join(debug_dir, f'target_keypoints_{filename_suffix}.png'), img_target_kp)
             
             if descriptors_src is None or descriptors_target is None or len(descriptors_src) == 0 or len(descriptors_target) == 0:
-                logger.warning("无法检测到特征点或计算描述符")
+                logger.warning("Unable to detect feature points or compute descriptors")
                 return good_matches, min_keypoints_required
                 
             # 使用不同的匹配方法
@@ -386,15 +416,18 @@ class VisionUtils:
                 if scale_factor < 1.0:
                     img_matches = cv2.resize(img_matches, None, fx=scale_factor, fy=scale_factor)
                 
+                # 确保图像格式兼容
+                img_matches = VisionUtils.ensure_image_format(img_matches)
+                
                 # 保存匹配图像
                 cv2.imwrite(os.path.join(debug_dir, f'matches_{filename_suffix}.png'), img_matches)
                 
                 # 只输出一次关键的匹配信息，避免日志冗余
-                logger.debug(f"特征点数量 - 源图像: {len(keypoints_src)}, 目标图像: {len(keypoints_target)}, 匹配数: {len(good_matches)}/{min_keypoints_required}")
+                logger.debug(f"Feature points count - Source image: {len(keypoints_src)}, Target image: {len(keypoints_target)}, Matches: {len(good_matches)}/{min_keypoints_required}")
             
             # 如果特征点匹配不足，尝试模板匹配作为备选方案
             if len(good_matches) < minKeypoints:
-                logger.debug(f"特征点匹配不足({len(good_matches)}/{minKeypoints})，使用模板匹配备选")
+                logger.debug(f"Insufficient feature point matches ({len(good_matches)}/{minKeypoints}), using template matching as fallback")
                 
                 # 进行模板匹配
                 template_result = cv2.matchTemplate(img_target_gray, img_src_gray, cv2.TM_CCOEFF_NORMED)
@@ -404,7 +437,9 @@ class VisionUtils:
                     # 保存相关性得分图
                     suffix = f"_{filename_suffix}" if filename_suffix else ""
                     corr_path = os.path.join(debug_dir, f"template_correlation{suffix}.png")
-                    cv2.imwrite(corr_path, template_result * 255)
+                    # 确保图像格式兼容
+                    template_result_normalized = VisionUtils.ensure_image_format(template_result * 255)
+                    cv2.imwrite(corr_path, template_result_normalized)
                     
                     # 在目标图像上绘制最佳匹配位置
                     h, w = img_src_gray.shape
@@ -413,33 +448,35 @@ class VisionUtils:
                     result_img = cv2.cvtColor(img_target_gray.copy(), cv2.COLOR_GRAY2BGR) if len(img_target_gray.shape) < 3 else img_target_gray.copy()
                     cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
                     pos_path = os.path.join(debug_dir, f"template_match_position{suffix}.png")
+                    # 确保图像格式兼容
+                    result_img = VisionUtils.ensure_image_format(result_img)
                     cv2.imwrite(pos_path, result_img)
                 
                 # 如果模板匹配分数高于阈值，则认为匹配成功
                 if max_val >= 0.8:  # 0.8是模板匹配的阈值
-                    logger.info(f"模板匹配分数达到{max_val:.3f} >= 0.8，判定为匹配成功")
+                    logger.info(f"Template matching score reaches {max_val:.3f} >= 0.8, determined as successful match")
                     # 返回足够数量的匹配点以通过检查 
                     return [1] * minKeypoints, min_keypoints_required
             
             return good_matches, min_keypoints_required
             
         except Exception as e:
-            logger.error(f"特征匹配失败: {e}")
+            logger.error(f"Feature matching failed: {e}")
             return good_matches, min_keypoints_required
 
     @staticmethod
     def matchTemplateSimple(img_target, img_src, threshold=None, debugEnabled=False, 
                            debug_dir="debug", return_details=False, filename_suffix="") -> Union[bool, Dict]:
         """
-        简单的模板匹配方法，作为SIFT的备选
-        @param img_target: 目标图像
-        @param img_src: 源图像(模板)
-        @param threshold: 匹配阈值
-        @param debugEnabled: 是否启用调试
-        @param debug_dir: 调试图像保存目录
-        @param return_details: 是否返回详细匹配信息
-        @param filename_suffix: 调试文件名后缀，用于区分不同图像的调试输出
-        @return: 布尔值(是否匹配成功)或包含详细信息的字典
+        Simple template matching method as an alternative to SIFT
+        @param img_target: Target image
+        @param img_src: Source image (template)
+        @param threshold: Matching threshold
+        @param debugEnabled: Whether to enable debugging
+        @param debug_dir: Debug image save directory
+        @param return_details: Whether to return detailed matching information
+        @param filename_suffix: Debug filename suffix for distinguishing different image outputs
+        @return: Boolean (whether matching is successful) or dictionary containing detailed information
         """
         try:
             # 标准化调试目录路径
@@ -468,12 +505,12 @@ class VisionUtils:
             if img_src_gray.shape[0] > img_target_gray.shape[0] or img_src_gray.shape[1] > img_target_gray.shape[1]:
                 # 模板比目标图像大，需要调整大小
                 scale = 0.5  # 缩放比例
-                logger.debug(f"模板({img_src_gray.shape})大于目标({img_target_gray.shape})，应用缩放: {scale}")
+                logger.debug(f"Template ({img_src_gray.shape}) larger than target ({img_target_gray.shape}), applying scale: {scale}")
                 resized_template = cv2.resize(img_src_gray, None, fx=scale, fy=scale)
                 result_mat = cv2.matchTemplate(img_target_gray, resized_template, cv2.TM_CCOEFF_NORMED)
             else:
                 # 模板比目标图像小，进行模板匹配
-                logger.debug(f"模板({img_src_gray.shape})小于或等于目标({img_target_gray.shape})，直接匹配")
+                logger.debug(f"Template ({img_src_gray.shape}) smaller than or equal to target ({img_target_gray.shape}), direct matching")
                 result_mat = cv2.matchTemplate(img_target_gray, img_src_gray, cv2.TM_CCOEFF_NORMED)
             
             # 获取最大匹配值及位置
@@ -484,7 +521,7 @@ class VisionUtils:
             # 2. 否则使用配置的阈值判断
             if max_val >= 0.9:
                 matched = True
-                logger.info(f"模板匹配分数达到{max_val:.3f} >= 0.9，直接判定为匹配成功")
+                logger.info(f"Template matching score reaches {max_val:.3f} >= 0.9, determined as successful match")
             else:
                 matched = max_val >= threshold
             
@@ -496,7 +533,7 @@ class VisionUtils:
                     current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                     filename_suffix = f"auto_{current_time}"
                     
-                logger.debug(f"模板匹配最大值: {max_val:.4f}, 阈值: {threshold:.4f}, 匹配状态: {matched}")
+                logger.debug(f"Template matching result: score={max_val:.4f}, threshold={threshold:.4f}, match status={matched}")
                 
                 # 保存匹配结果可视化
                 os.makedirs(debug_dir, exist_ok=True)
@@ -523,8 +560,8 @@ class VisionUtils:
                 cv2.imwrite(match_result_path, result_img)
                 cv2.imwrite(corr_result_path, (result_mat * 255).astype(np.uint8))
                 
-                logger.debug(f"已保存模板匹配结果图像到 {match_result_path}")
-                logger.debug(f"已保存相关性分布图像到 {corr_result_path}")
+                logger.debug(f"Template matching result image saved to {match_result_path}")
+                logger.debug(f"Correlation distribution image saved to {corr_result_path}")
             
             # 更新结果信息
             result["matched"] = matched
@@ -532,7 +569,7 @@ class VisionUtils:
             result["threshold"] = threshold
             
             # 日志记录匹配结果
-            logger.info(f"模板匹配结果: 得分={max_val:.4f}, 阈值={threshold:.4f}, 匹配状态={matched}")
+            logger.info(f"Template matching result: score={max_val:.4f}, threshold={threshold:.4f}, match status={matched}")
             
             if return_details:
                 return result
@@ -540,15 +577,15 @@ class VisionUtils:
                 return matched
             
         except Exception as e:
-            logger.error(f"简单模板匹配失败: {e}")
+            logger.error(f"Simple template matching failed: {e}")
             if return_details:
                 return {"matched": False, "method": "error", "score": 0.0, "error": str(e)}
             else:
                 return False
 
     def recognize_ammo_with_template(self, image, expected_value=None, debug_enabled=False, debug_dir=None):
-        """使用模板识别弹药数量"""
-        # 初始化带配置路径的识别器
+        """Using template to recognize ammo count"""
+        # Initialize recognizer with config path
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
         template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "digits")
         

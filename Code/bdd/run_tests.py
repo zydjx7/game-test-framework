@@ -103,7 +103,7 @@ def start_flask_server(target=None):
         return None
 
 # 1. 预定义测试模式
-def run_predefined_tests(target=None):
+def run_predefined_tests(target=None, feature_file=None):
     """运行预定义的测试用例"""
     # 启动Flask服务器
     server = start_flask_server(target)
@@ -118,14 +118,25 @@ def run_predefined_tests(target=None):
     config = Configuration(command_args=[])
     
     # 设置正确的特性文件和格式
-    config.paths = [os.path.join(root, "features")]
+    if feature_file:
+        # 如果指定了特定的feature文件
+        feature_path = os.path.join(root, "features", feature_file)
+        if os.path.exists(feature_path):
+            config.paths = [feature_path]
+            logger.info(f"使用特定的feature文件: {feature_path}")
+        else:
+            logger.error(f"指定的feature文件不存在: {feature_path}")
+            return False
+    else:
+        # 使用整个features目录
+        config.paths = [os.path.join(root, "features")]
+        logger.info(f"使用特性目录: {config.paths[0]}")
+    
     config.format = ["pretty"]
     
     # 设置环境变量以便传递target给steps文件
     if target:
         os.environ["GAMECHECK_TARGET"] = target
-    
-    logger.info(f"使用特性目录: {config.paths[0]}")
     
     runner = Runner(config)
     result = runner.run()
@@ -210,15 +221,23 @@ if __name__ == "__main__":
     parser.add_argument("--target", dest="target", help="设置测试目标，如'p1_legacy'或'assaultcube'")
     parser.add_argument("--mode", choices=["predefined", "generated", "batch"], 
                         default="predefined", help="测试模式：预定义/生成单个/批量生成")
+    parser.add_argument("--feature", dest="feature_file", help="指定要运行的feature文件(仅在predefined模式下有效)")
+    parser.add_argument("--use-llm-analysis", action="store_true", help="是否在测试中使用LLM进行准星分析")
     
     args = parser.parse_args()
     
     # 使用命令行参数或环境变量中的API密钥
     api_key = args.api_key or API_KEY
     
+    # 设置是否使用LLM进行准星分析的环境变量
+    if args.use_llm_analysis:
+        os.environ["USE_LLM_ANALYSIS"] = "true"
+    else:
+        os.environ["USE_LLM_ANALYSIS"] = "false"
+    
     if args.mode == "predefined":
         print("运行预定义测试用例...")
-        result = run_predefined_tests(args.target)
+        result = run_predefined_tests(args.target, args.feature_file)
     elif args.mode == "generated":
         print("生成并运行单个测试用例...")
         result = run_generated_tests(api_key, args.requirement, args.target)
