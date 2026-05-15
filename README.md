@@ -1,104 +1,143 @@
-# 🎮 游戏测试自动化框架 (Game Test Automation Framework)
+# 🎮 Game Test Automation Framework
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.5+-green.svg)](https://opencv.org)
-[![Gherkin](https://img.shields.io/badge/BDD-Gherkin-yellow.svg)](https://cucumber.io/docs/gherkin/)
-[![License](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
+[![BDD](https://img.shields.io/badge/BDD-Gherkin-yellow.svg)](https://cucumber.io/docs/gherkin/)
+[![ViZDoom](https://img.shields.io/badge/ViZDoom-1.2+-orange.svg)](https://vizdoom.farama.org/)
+[![DeepSeek](https://img.shields.io/badge/LLM-DeepSeek-purple.svg)](https://api.deepseek.com)
+
+> 🎓 **修士研究项目**（立命館大学情報理工学研究科 M1, 2026 年 4 月入学）
+> 研究方向：基于 LLM Agent + VLM 的轻量级 FPS 游戏自动化测试框架
+> 当前阶段：**Phase 0.1 完成** — 从 AssaultCube 静态截图测试迁移到 ViZDoom 动态 agent loop
 
 ## 📖 项目概述
 
-这是一个基于计算机视觉技术的游戏测试自动化框架，旨在通过机器替代人工测试员，降低测试成本并提高测试效率。该框架具有跨引擎、跨平台的特性，可以在不同设备（PC、游戏主机）和操作系统上工作。
+本仓库实现一个**基于 LLM Agent 的 FPS 游戏自动化测试框架**，研究核心创新点：
 
-### ✨ 主要特点
+1. **Goal-level Gherkin** — Gherkin 从"步骤描述"升级为"测试目标描述"
+2. **三类 failure 反思恢复**（Perception / Execution / Logic）
+3. **Mutation Testing + LLM Oracle** — 通过 ACS 脚本注入 seeded bug 自动评估
 
-- 🔍 **计算机视觉驱动**：基于图像识别技术，无需游戏引擎集成
-- 🚀 **跨平台兼容**：支持PC、游戏主机等多种平台
-- 🎯 **引擎无关**：适用于Unity、Unreal Engine等各种游戏引擎
-- 🤖 **LLM集成**：支持DeepSeek、OpenAI等大语言模型辅助测试
-- 📊 **BDD测试**：使用Gherkin语法编写可读性强的测试用例
-- 📈 **全面覆盖**：支持UI状态检测、弹药系统、准星识别、声音分析等
+项目分两层：
+- **AssaultCube baseline**（已完成）：本科论文系统，作为论文 Section IV 的对比基线保留
+- **ViZDoom main line**（Phase 1+ 渐进新增）：Python API + ground truth + ACS 脚本可注入 bug
+
+两层通过 [perception/base.py](perception/base.py) 的 `GameStatePerceptor` 统一接口连接。
+
+## 🗺️ 研究路线图
+
+| Phase | 月份 | 状态 | 核心目标 |
+|---|---|---|---|
+| **0** | M1 | 🟡 进行中 | ViZDoom 环境就绪 + perception 接口抽出 |
+| 0.1 | M1 | ✅ 完成 | `GameStatePerceptor` 接口 + `CVPerceptor` 包装层 |
+| 1 | M2-3 | ⚪ 未开始 | VLM Perception + Ground Truth 对比（多 backend） |
+| 2 | M4-5 | ⚪ 未开始 | Action Executor + Goal-level Gherkin + 最小 agent loop |
+| 3 | M6-7 | ⚪ 未开始 | Reflection（三类 failure 分类与恢复） |
+| 4 | M8-9 | ⚪ 未开始 | LLM Oracle + Mutation Testing |
+| 5 | M10+ | ⚪ 未开始 | 论文写作 + 求职 |
 
 ## 🏗️ 框架架构
 
 ```
 game-testing-main/
-├── 📁 Code/                           # 核心代码目录
-│   ├── 🎯 GameStateChecker/           # 游戏状态检测引擎
-│   │   ├── AmmoTemplateRecognizer.py  # 弹药数量识别
-│   │   ├── VisionUtils.py             # 计算机视觉工具
-│   │   └── LogicLayer.py              # 逻辑处理层
-│   ├── 🧪 bdd/                        # BDD测试框架
-│   │   ├── features/                  # 测试用例特性文件
-│   │   ├── steps/                     # 测试步骤定义
-│   │   └── test_generator/            # LLM测试生成器
-│   ├── 🎵 SoundTestingSupport/        # 音频测试工具
-│   └── 🎬 AnimationtestingSupport/    # 动画测试工具
-├── 📚 Doc/                            # 技术文档
-└── 📋 requirements.txt                # 项目依赖
+│
+├── 📁 Code/                            # AssaultCube baseline（论文 baseline，不动）
+│   ├── 🎯 GameStateChecker/            # 经典 CV 感知：模板匹配 + OCR
+│   │   ├── LogicLayer.py               # 弹药/准星检测主入口
+│   │   ├── VisionUtils.py              # CV 工具（SIFT 特征匹配等）
+│   │   └── AmmoTemplateRecognizer.py   # 数字模板识别器
+│   ├── 🧪 bdd/                         # BDD 主流程（DeepSeek + behave）
+│   │   ├── run_tests.py                # 入口
+│   │   ├── test_generator/             # LLM 生成 Gherkin
+│   │   └── features/steps/             # behave step functions
+│   └── 🎵 SoundTestingSupport/         # 音频测试 PoC
+│
+├── 📁 src/                             # 共享层
+│   ├── llm/client_helpers.py           # DeepSeek 统一入口（OpenAI-compatible SDK）
+│   ├── gherkin/                        # Gherkin parser
+│   └── rivergame/                      # legacy（标 legacy，不动）
+│
+├── 📁 perception/                      # ⭐ Phase 0.1 新增：统一感知接口
+│   ├── base.py                         # GameStatePerceptor ABC + GameState dataclass
+│   └── cv_perceptor.py                 # 包装 Code/GameStateChecker
+│
+├── 🧪 tests/                           # pytest（含新 test_cv_perceptor.py）
+│
+├── 📁 env/                             # ⏳ Phase 1 新增：ViZDoom 环境封装
+├── 📁 actions/                         # ⏳ Phase 2
+├── 📁 agent/                           # ⏳ Phase 2-3
+├── 📁 oracle/                          # ⏳ Phase 4
+└── 📁 experiments/                     # ⏳ Phase 1+ 渐增（对比实验脚本）
 ```
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Python 3.8+
+- Python 3.10+（ViZDoom 兼容性要求）
 - OpenCV 4.5+
-- 必要的Python包（见requirements.txt）
+- Windows 用户额外需要：Microsoft Visual C++ 2015-2022 Redistributable（ViZDoom 依赖）
 
-### 安装步骤
+### 安装
 
-1. **克隆仓库**
 ```bash
 git clone https://github.com/zydjx7/game-test-framework.git
 cd game-test-framework
-```
-
-2. **安装依赖**
-```bash
 pip install -r requirements.txt
 ```
 
-3. **配置环境变量**
+### LLM 配置
+
+项目用 **OpenAI-compatible SDK** 接入 **DeepSeek**（不是 OpenAI）。在根目录 `.env`：
+
 ```bash
-# 如需使用LLM功能，配置API密钥
-export OPENAI_API_KEY="your_api_key"
-export OPENAI_BASE_URL="https://api.deepseek.com"
-export OPENAI_MODEL="deepseek-chat"
+OPENAI_API_KEY=your_deepseek_api_key
+OPENAI_BASE_URL=https://api.deepseek.com
+OPENAI_MODEL=deepseek-chat
+USE_LLM_ANALYSIS=true
 ```
 
-### 运行示例
+### 运行
 
 ```bash
-# 运行BDD测试
+# 跑 AssaultCube baseline 测试（既有功能）
 cd Code/bdd
-python run_tests.py
+python run_tests.py --mode predefined --feature generated_test.feature --target assaultcube
 
-# 生成LLM测试用例
-python test_generator/llm_generator.py
+# 跑 pytest（含 Phase 0.1 新单元测试）
+python -m pytest
 ```
 
-## 🎯 核心功能
+## 🧩 Perception 接口（Phase 0.1）
 
-### 1. 🎮 游戏状态检测
+新模块 [perception/](perception/) 把感知后端抽象为统一接口，让 Phase 1+ 的 VLM 和 ground truth 后端能无侵入接入：
 
-**支持的检测类型：**
-- ✅ 弹药数量识别（单位数/双位数）
-- ✅ 准星状态分析（武器类型、瞄准目标）
-- ✅ 玩家生命状态检测
-- ✅ 武器切换状态识别
-
-**示例代码：**
 ```python
-from Code.GameStateChecker.AmmoTemplateRecognizer import AmmoTemplateRecognizer
+from perception import CVPerceptor
 
-recognizer = AmmoTemplateRecognizer()
-ammo_count, confidence = recognizer.recognize_number(screenshot)
-print(f"检测到弹药数量: {ammo_count}, 置信度: {confidence}")
+# 包装既有 AssaultCube CV pipeline
+perceptor = CVPerceptor(target_name="assaultcube")
+state = perceptor.perceive(screenshot, expected_ammo=20, check_crosshair=True)
+
+print(state.ammo)           # 20（来自模板匹配 / OCR 兜底）
+print(state.crosshair_red)  # True/False
 ```
 
-### 2. 🧪 BDD自动化测试
+Phase 1+ 将新增两个 backend，对外接口不变：
 
-**支持的测试步骤：**
+- `GroundTruthPerceptor` — 直接读 ViZDoom `state.game_variables`，作为评估基准
+- `VLMPerceptor` — DeepSeek-VL2 / Qwen-VL / GPT-4o-mini 多 backend 视觉模型
+
+## 🎯 核心功能（AssaultCube baseline）
+
+### 1. 游戏状态检测
+
+- ✅ 弹药数量识别（单/双位数模板匹配 + OCR 兜底）
+- ✅ 准星状态分析（SIFT 特征匹配）
+- ✅ 调试图像自动保存到 `debug/` 目录便于排查
+
+### 2. BDD 自动化测试
+
 ```gherkin
 Feature: 武器系统测试
   Scenario: 弹药消耗验证
@@ -109,112 +148,49 @@ Feature: 武器系统测试
     Then the ammo count should decrease
 ```
 
-### 3. 🤖 LLM智能测试生成
+### 3. LLM 智能测试生成
 
-框架集成了大语言模型，可自动生成测试用例：
-
-```python
-from Code.bdd.test_generator.llm_generator import TestGenerator
-
-generator = TestGenerator()
-test_case = generator.generate_test_case("测试玩家切换武器时准星的变化")
-```
-
-### 4. 🎵 音频测试支持
-
-- 音频信号分析
-- 语音识别验证
-- 游戏音效检测
-
-## 📊 支持的游戏
-
-目前框架主要针对以下游戏进行了优化：
-
-- 🎯 **AssaultCube**：完整的FPS游戏测试支持
-- 🎮 **Unity示例项目**：展示框架在Unity引擎中的应用
+通过 DeepSeek 自动从自然语言描述生成 Gherkin 测试用例。
 
 ## 🔧 配置说明
 
-### config.yaml 配置文件
+`Code/GameStateChecker/config.yaml`（不在 git 跟踪，参考结构）：
 
 ```yaml
 active_target: assaultcube
 targets:
   assaultcube:
     cv_params:
-      ammo_bbox_rel: [0.68, 0.92, 0.05, 0.064]  # 弹药区域相对坐标
-      crosshair_region: [0.45, 0.4, 0.1, 0.2]   # 准星检测区域
+      ammo_bbox_rel: [0.68, 0.92, 0.05, 0.064]  # 相对坐标
+      crosshair_region: [0.45, 0.4, 0.1, 0.2]
 ```
-
-### 环境变量配置
-
-```bash
-# LLM配置
-OPENAI_API_KEY=your_deepseek_api_key
-OPENAI_BASE_URL=https://api.deepseek.com
-OPENAI_MODEL=deepseek-chat
-USE_LLM_ANALYSIS=true
-
-# 调试配置
-DEBUG_MODE=true
-LOG_LEVEL=DEBUG
-```
-
-## 📈 测试报告
-
-框架自动生成详细的测试报告：
-
-- 📊 JSON格式测试结果
-- 🖼️ 调试截图和标注
-- 📋 详细的错误日志
-- 📈 测试覆盖率统计
 
 ## 🎥 演示视频
 
-观看我们的工具演示视频：
-[https://youtu.be/qFfWvaLtOU0](https://youtu.be/qFfWvaLtOU0)
+AssaultCube baseline 演示：https://youtu.be/qFfWvaLtOU0
 
-## 📚 文档与教程
+ViZDoom main line demo 计划在 Phase 1 末发布。
 
-### 快速入门指南
+## 📚 相关文档
 
-1. **BDD测试入门**：查看 `Code/bdd/` 目录中的Unity和Python示例
-2. **音频测试**：参考 `Code/SoundTestingSupport/` 目录
-3. **动画测试**：查看 `Code/AnimationtestingSupport/` 目录  
-4. **计算机视觉模型**：探索 `Code/TestApp/` 和 `Code/TestsPriorityApp/` 目录
-
-### 详细文档
-
-完整的技术文档位于 **Doc** 目录中，包括：
-- 架构设计文档
-- API参考手册
-- 最佳实践指南
-- 常见问题解答
+- 完整研究计划（5-Phase）：内部文档 `扩展构想-ViZDoom版.md`
+- 架构设计：`Doc/` 目录
+- Phase 0.1 接口设计意图：见 [perception/base.py](perception/base.py) 模块 docstring
 
 ## 🤝 贡献指南
 
-我们欢迎社区贡献！请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
+本仓库当前是个人研究项目，欢迎 issue 讨论。
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+License 暂未确定，请勿用于商业用途。学术参考请通过 Issue 联系作者。
 
-## 📞 联系我们
+## 📞 联系
 
-- 📧 邮箱：[项目邮箱]
-- 🐛 问题反馈：[GitHub Issues](https://github.com/zydjx7/game-test-framework/issues)
-- 💬 讨论：[GitHub Discussions](https://github.com/zydjx7/game-test-framework/discussions)
+- 🐛 Issues：[GitHub Issues](https://github.com/zydjx7/game-test-framework/issues)
 
 ## 🙏 致谢
 
-感谢所有为这个项目贡献代码、报告问题和提供建议的开发者们！
-
----
-
-⭐ 如果这个项目对您有帮助，请给我们一个星标！
+- 本科指导：大连理工大学
+- 修士指导：丸山 勝久 先生（立命館大学）
+- 启发来源：TITAN (NetEase), RiverGame, ReAct, Voyager
