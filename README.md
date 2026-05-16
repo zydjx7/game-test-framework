@@ -97,6 +97,12 @@ OPENAI_MODEL=deepseek-v4-flash
 USE_LLM_ANALYSIS=true
 ```
 
+> ⚠️ 旧模型名 `deepseek-chat` / `deepseek-reasoner` 将于 **2026-07-24** 完全下线。
+> 新代码请使用 `deepseek-v4-flash`（高性价比，284B 总参 / 13B 激活）或
+> `deepseek-v4-pro`（最强，1.6T 总参 / 49B 激活）。
+> 两者都是 1M context + 支持 thinking/non-thinking 双模式。
+> 详见 [DeepSeek 官方 pricing 文档](https://api-docs.deepseek.com/quick_start/pricing/)。
+
 ### 运行
 
 ```bash
