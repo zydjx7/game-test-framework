@@ -24,17 +24,23 @@ class RiverGameTestRunner:
     async def initialize(self):
         """初始化HTTP会话"""
         if not self._initialized:
-            self.session = aiohttp.ClientSession()
             self._initialized = True
             logger.info("RiverGameTestRunner初始化完成")
 
     async def cleanup(self):
         """清理资源"""
         if self._initialized and self.session:
-            await self.session.close()
+            try:
+                await self.session.close()
+            except RuntimeError as e:
+                logger.warning(f"RiverGameTestRunner session close skipped: {e}")
             self._initialized = False
             logger.info("RiverGameTestRunner清理完成")
             
+    async def _ensure_session(self):
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession()
+
     async def execute_test_scenario(self, scenario: Dict[str, Any]) -> Dict[str, Any]:
         """执行测试场景"""
         if not self._initialized:
@@ -71,8 +77,8 @@ class RiverGameTestRunner:
         }
         
         try:
-            if not self.session:
-                await self.initialize()
+            await self.initialize()
+            await self._ensure_session()
                 
             # 根据步骤类型执行相应的操作
             if step['type'] == 'Given':

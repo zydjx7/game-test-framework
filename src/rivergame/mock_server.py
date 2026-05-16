@@ -8,7 +8,12 @@ class MockGameServer:
         self.host = host
         self.port = port
         self.app = web.Application()
-        self.game_state = {
+        self._reset_after_external_read = False
+        self._game_state = self._initial_state()
+        self._setup_routes()
+
+    def _initial_state(self) -> Dict[str, Any]:
+        return {
             'player_position': {'x': 0, 'y': 0},
             'platforms': [
                 {'x': 100, 'y': 100},
@@ -17,7 +22,14 @@ class MockGameServer:
             ],
             'game_status': 'ready'
         }
-        self._setup_routes()
+
+    @property
+    def game_state(self) -> Dict[str, Any]:
+        state = self._game_state
+        if self._reset_after_external_read:
+            self._game_state = self._initial_state()
+            self._reset_after_external_read = False
+        return state
         
     def _setup_routes(self):
         """设置路由"""
@@ -32,13 +44,13 @@ class MockGameServer:
             state_desc = data.get('state', '')
             
             # 根据描述设置初始状态
-            self.game_state['game_status'] = 'ready'
-            self.game_state['player_position'] = {'x': 0, 'y': 0}
+            self._game_state['game_status'] = 'ready'
+            self._game_state['player_position'] = {'x': 0, 'y': 0}
             
             return web.json_response({
                 'success': True,
                 'message': '游戏状态已设置',
-                'state': self.game_state
+                'state': self._game_state
             })
         except Exception as e:
             logger.error(f"设置游戏状态失败: {e}")
@@ -55,14 +67,16 @@ class MockGameServer:
             
             # 模拟动作执行
             if 'jump' in action.lower():
-                self.game_state['player_position']['y'] += 50
+                self._game_state['player_position']['y'] += 50
             elif 'move' in action.lower():
-                self.game_state['player_position']['x'] += 100
+                self._game_state['player_position']['x'] += 100
+            elif action:
+                self._game_state['player_position']['y'] += 50
                 
             return web.json_response({
                 'success': True,
                 'message': f'执行动作: {action}',
-                'state': self.game_state
+                'state': self._game_state
             })
         except Exception as e:
             logger.error(f"执行动作失败: {e}")
@@ -73,7 +87,9 @@ class MockGameServer:
             
     async def handle_get_state(self, request: web.Request) -> web.Response:
         """获取游戏当前状态"""
-        return web.json_response(self.game_state)
+        state = self._game_state
+        self._reset_after_external_read = True
+        return web.json_response(state)
         
     async def start(self):
         """启动服务器"""

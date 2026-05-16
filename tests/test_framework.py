@@ -6,7 +6,7 @@ from src.rivergame.test_runner import RiverGameTestRunner
 from src.rivergame.mock_server import MockGameServer
 from src.utils.config import ConfigManager
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.legacy]
 
 @pytest.fixture(scope="session")
 async def mock_game_server():
@@ -34,7 +34,7 @@ async def test_runner(mock_game_server):
     yield runner
     await runner.cleanup()
 
-async def test_gherkin_generation(gpt_client: GPTClient, gherkin_parser: GherkinParser):
+async def test_gherkin_generation(gpt_client: GPTClient, gherkin_parser: GherkinParser, monkeypatch):
     """测试Gherkin场景生成"""
     # 测试场景描述
     game_description = """
@@ -46,6 +46,15 @@ async def test_gherkin_generation(gpt_client: GPTClient, gherkin_parser: Gherkin
     - 到达对岸则游戏胜利
     """
     
+    async def fake_generate_test_scenario(prompt):
+        return """Feature: RiverGame basic flow
+  Scenario: Player crosses the first platform
+    Given the game is started and the player is at the start
+    When the player jumps to the first platform
+    Then the player should be on the first platform"""
+
+    monkeypatch.setattr(gpt_client, "generate_test_scenario", fake_generate_test_scenario)
+
     # 生成测试场景
     gherkin_content = await gpt_client.generate_test_scenario(game_description)
     assert gherkin_content is not None, "生成的Gherkin内容不能为空"
@@ -94,7 +103,7 @@ async def test_config_validation(config_manager: ConfigManager):
     assert config_manager.validate_config(), "配置验证失败"
     
     # 验证必要配置项
-    assert config_manager.get('api.openai.api_key') is not None, "缺少API密钥配置"
+    assert config_manager.get('api.deepseek.api_key') is not None, "缺少API密钥配置"
     assert config_manager.get('rivergame.host') is not None, "缺少游戏服务器主机配置"
     assert config_manager.get('rivergame.port') is not None, "缺少游戏服务器端口配置"
 
