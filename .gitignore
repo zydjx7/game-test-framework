@@ -58,6 +58,14 @@ Code/GameStateChecker/debug/
 *.swp
 *.swo
 .specstory/
+.claude/
+
+# Generated analysis artifacts
+Code/AnimationtestingSupport/FIFA experiments, code, doc/Implementation/movenet_analysis.md
+Code/AnimationtestingSupport/FIFA experiments, code, doc/Implementation/movenet_analysis_files/
+
+# Local research PDFs are not redistributed from this public repository.
+Doc/*.pdf
 
 # ===================================================================
 # 系统文件
