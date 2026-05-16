@@ -44,6 +44,9 @@ logs/
 *.log
 debug/
 results/
+Code/bdd/reports/
+Code/GameStateChecker/debug/
+.backup/
 
 # ===================================================================
 # IDE / 编辑器临时文件
