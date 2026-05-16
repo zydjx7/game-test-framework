@@ -1,89 +1,75 @@
-# Gherkin游戏测试框架
+# AssaultCube BDD Test Framework
 
-这个框架使用Gherkin语法和LLM自动生成游戏测试用例，结合现有的图像识别引擎进行游戏界面测试。
+This directory contains the active AssaultCube BDD flow:
 
-## 系统要求
+```text
+Code/bdd/run_tests.py -> behave features -> features/steps/weapon_steps.py -> Code/GameStateChecker Flask/LogicLayer
+```
 
-- Python 3.7+
-- OpenAI API密钥
-- 游戏截图样本（位于`../../GameStateChecker/unitTestResources/`目录）
+The old RiverGame pytest path is kept as legacy coverage and is not part of the default AssaultCube validation signal.
 
-## 安装依赖
+## Dependencies
 
 ```bash
 pip install behave python-dotenv openai opencv-python
 ```
 
-## 配置API密钥
+The project uses the OpenAI-compatible Python SDK to call DeepSeek, because DeepSeek exposes an OpenAI-compatible API format.
 
-在运行测试之前，您需要设置OpenAI API密钥。有两种方式：
+## DeepSeek Configuration
 
-1. 通过命令行工具设置：
+Use the workspace-root `.env` file as the single LLM configuration entrypoint:
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
+```
+
+`OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL` are still accepted as legacy aliases so older local `.env` files do not break immediately, but new configuration should use `DEEPSEEK_*`.
+
+Do not commit or paste API keys into chat. DeepSeek keys are normally shown only when created; if you cannot see an old key, create a new one in the DeepSeek platform and place it in the root `.env`.
+
+To update the key without exposing it in command history:
 
 ```bash
-python update_api_key.py --key YOUR_API_KEY --test
+python Code/bdd/update_api_key.py --prompt-key --test
 ```
 
-2. 手动创建`.env`文件，内容为：
-
-```
-OPENAI_API_KEY=YOUR_API_KEY
-```
-
-## 运行测试
-
-### 运行预定义测试
+To test the current configuration:
 
 ```bash
-python run_tests.py --mode predefined
+python Code/bdd/test_api_connection.py
 ```
 
-### 使用LLM生成并运行单个测试
+## Proxy Note
+
+For real DeepSeek calls, make sure `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` do not point to `127.0.0.1:9` or `localhost:9`. That value is a blocking placeholder, not a running proxy server.
+
+The shared LLM client bypasses only that invalid placeholder for DeepSeek requests. Valid proxy settings are left untouched.
+
+## Running Tests
+
+Run predefined AssaultCube tests:
 
 ```bash
-python run_tests.py --mode generated --req "测试玩家装备武器后准星是否显示"
+python Code/bdd/run_tests.py --mode predefined --target assaultcube
 ```
 
-### 使用LLM生成并运行多个测试
+Run a specific feature:
 
 ```bash
-python run_tests.py --mode batch --req "测试武器系统，包括切换武器和弹药变化" --count 3
+python Code/bdd/run_tests.py --mode predefined --feature generated_test.feature --target assaultcube
 ```
 
-## 文件结构
-
-- `features/`: Gherkin特性文件
-- `steps/`: 步骤定义文件
-- `test_generator/`: LLM测试生成器
-- `run_tests.py`: 测试运行脚本
-- `update_api_key.py`: API密钥更新工具
-
-## 添加新的测试
-
-1. 在`features/`目录中创建新的`.feature`文件
-2. 在`steps/`目录中实现对应的步骤函数
-3. 运行`python run_tests.py --mode predefined`执行测试
-
-## 使用LLM自动生成测试
-
-示例：
+Generate and run one test case with DeepSeek:
 
 ```bash
-python run_tests.py --mode generated --req "测试当玩家切换武器时，准星是否变化"
+python Code/bdd/run_tests.py --mode generated --req "test weapon switching" --target assaultcube
 ```
 
-这将生成一个Gherkin测试用例，并自动执行它。
-
-## 批量生成测试用例
-
-示例：
+Generate and run multiple test cases with DeepSeek:
 
 ```bash
-python run_tests.py --mode batch --req "测试玩家在不同场景下的武器交互" --count 5
+python Code/bdd/run_tests.py --mode batch --req "test weapon and ammo behavior" --count 3 --target assaultcube
 ```
-
-这将生成5个不同的测试场景，并将它们合并到一个`.feature`文件中执行。
-
-## 测试报告
-
-测试结果报告保存在`reports/`目录中，格式为JSON。 

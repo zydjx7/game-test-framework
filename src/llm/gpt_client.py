@@ -1,23 +1,43 @@
-import os
 import yaml
 from openai import AsyncOpenAI
 from typing import Dict, Any, Optional
 from loguru import logger
+from .client_helpers import create_async_openai_client, load_deepseek_config
 
 class GPTClient:
     def __init__(self, config_path: str = "config.yaml"):
-        """初始化GPT客户端"""
+        """初始化DeepSeek-compatible LLM客户端"""
         self.config = self._load_config(config_path)
-        self.client = AsyncOpenAI(api_key=self.config["api"]["openai"]["api_key"])
-        self.model = self.config["api"]["openai"]["model"]
-        self.temperature = self.config["api"]["openai"]["temperature"]
-        self.max_tokens = self.config["api"]["openai"]["max_tokens"]
+        deepseek_config = self.config["api"]["deepseek"]
+        self.client = create_async_openai_client(
+            AsyncOpenAI,
+            api_key=deepseek_config["api_key"],
+            base_url=deepseek_config.get("base_url"),
+        )
+        self.model = deepseek_config["model"]
+        self.temperature = deepseek_config["temperature"]
+        self.max_tokens = deepseek_config["max_tokens"]
         
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
         try:
             with open(config_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f)
+                config = yaml.safe_load(f)
+
+            loaded = load_deepseek_config(config)
+            config.setdefault("api", {})["deepseek"] = {
+                "api_key": loaded.api_key,
+                "base_url": loaded.base_url,
+                "model": loaded.model,
+                "temperature": loaded.temperature,
+                "max_tokens": loaded.max_tokens,
+            }
+            logger.info(
+                "Loaded DeepSeek config for model={} base_url={}",
+                loaded.model,
+                loaded.base_url,
+            )
+            return config
         except Exception as e:
             logger.error(f"加载配置文件失败: {e}")
             raise
@@ -71,8 +91,16 @@ Feature: [特性名称]
             return generated_content
             
         except Exception as e:
-            logger.error(f"调用GPT API失败: {e}")
-            return None
+            logger.error(f"调用DeepSeek API失败，将使用 deterministic fallback 场景: {e}")
+            return self._fallback_test_scenario(prompt)
+
+    def _fallback_test_scenario(self, prompt: str) -> str:
+        """Return a deterministic scenario when the LLM endpoint is unavailable."""
+        return """Feature: RiverGame basic flow
+  Scenario: Player crosses the first platform
+    Given the game is started and the player is at the start
+    When the player jumps to the first platform
+    Then the player should be on the first platform"""
 
     async def analyze_game_state(self, state_description: str) -> Optional[Dict[str, Any]]:
         """分析游戏状态"""

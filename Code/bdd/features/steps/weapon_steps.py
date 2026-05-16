@@ -4,8 +4,15 @@ import os
 import cv2
 import json
 from loguru import logger
-import requests
 from datetime import datetime
+
+project_root = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from src.llm.client_helpers import chat_completions_url, llm_requests_post, load_deepseek_config
 
 # 确保logs目录存在
 logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
@@ -510,33 +517,22 @@ def step_impl(context, expected_ammo):
     ), f"弹药数量不是{expected_ammo}"
 
 # 添加LLM分析功能
-import requests
-import json
-from datetime import datetime
 
 # 辅助函数: 调用LLM API
 def call_llm_api(prompt, temperature=0.1):
     """调用LLM API进行分析"""
-    # 使用环境变量中的API密钥和配置
-    api_key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        logger.error("未找到API密钥环境变量 LLM_API_KEY 或 OPENAI_API_KEY")
+    config = load_deepseek_config()
+    if not config.api_key:
+        logger.error("No DeepSeek API key found. Set DEEPSEEK_API_KEY in the root .env.")
         return None
-    
-    # 获取API类型和其他配置
-    api_type = os.environ.get("API_TYPE", "deepseek")
-    model_name = os.environ.get("OPENAI_MODEL", "deepseek-chat")
-    
-    # 根据API类型设置base_url
-    base_url = "https://api.deepseek.com" if api_type == "deepseek" else "https://api.openai.com"
-    if os.environ.get("OPENAI_BASE_URL"):
-        base_url = os.environ.get("OPENAI_BASE_URL")
-    
-    logger.info(f"使用 {api_type} API (URL: {base_url}) 调用 {model_name} 模型")
+
+    model_name = config.model
+    base_url = config.base_url
+    logger.info(f"Using DeepSeek API (URL: {base_url}) with model {model_name}")
     
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {config.api_key}"
     }
     
     payload = {
@@ -550,10 +546,10 @@ def call_llm_api(prompt, temperature=0.1):
     }
     
     try:
-        endpoint = f"{base_url}/v1/chat/completions"
+        endpoint = chat_completions_url(base_url)
         logger.debug(f"调用API端点: {endpoint}")
         
-        response = requests.post(
+        response = llm_requests_post(
             endpoint,
             headers=headers,
             json=payload,

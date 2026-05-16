@@ -1,53 +1,53 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""Validate the configured DeepSeek API key without printing it."""
+
 import os
-from dotenv import load_dotenv
-from openai import OpenAI
 import sys
+
 from loguru import logger
+from openai import OpenAI
 
-# 设置日志
-logger.add("logs/api_test.log", level="DEBUG", rotation="1 MB")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-def test_api_key():
-    """测试API密钥是否有效"""
-    # 加载环境变量
-    load_dotenv()
-    
-    # 获取API密钥
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        logger.error("错误：未找到API密钥，请确保.env文件中设置了OPENAI_API_KEY")
+from src.llm.client_helpers import create_openai_client, load_deepseek_config
+
+
+LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+logger.add(os.path.join(LOG_DIR, "api_test.log"), level="DEBUG", rotation="1 MB")
+
+
+def test_api_key() -> bool:
+    config = load_deepseek_config()
+    if not config.api_key:
+        logger.error("No API key found. Set DEEPSEEK_API_KEY in the root .env.")
         return False
-    
-    # 获取模型名称、基础URL和API类型
-    model_name = os.getenv("OPENAI_MODEL", "deepseek-chat")
-    base_url = os.getenv("OPENAI_BASE_URL", "")
-    api_type = os.getenv("API_TYPE", "deepseek")
-    
-    # 创建客户端
-    client_args = {"api_key": api_key}
-    if base_url:
-        client_args["base_url"] = base_url
-        logger.info(f"使用API基础URL: {base_url}")
-        
-    client = OpenAI(**client_args)
-    
-    # 测试API调用
+
+    client = create_openai_client(
+        OpenAI,
+        api_key=config.api_key,
+        base_url=config.base_url,
+    )
+
     try:
         response = client.chat.completions.create(
-            model=model_name,
+            model=config.model,
             messages=[{"role": "user", "content": "Hello"}],
-            max_tokens=5
+            max_tokens=5,
         )
-        logger.info(f"API密钥设置成功！使用{api_type} API，模型:{model_name}")
-        logger.info(f"收到回复: {response.choices[0].message.content}")
+        logger.info("DeepSeek API key is valid. Model: {}", config.model)
+        logger.info("Received response: {}", response.choices[0].message.content)
         return True
-    except Exception as e:
-        logger.error(f"API调用失败: {e}")
+    except Exception as exc:
+        logger.error("DeepSeek API key validation failed: {}", exc)
         return False
+
 
 if __name__ == "__main__":
     success = test_api_key()
-    if success:
-        print("✅ API密钥验证成功")
-    else:
-        print("❌ API密钥验证失败")
+    print("DeepSeek API key validation passed" if success else "DeepSeek API key validation failed")
+    raise SystemExit(0 if success else 1)

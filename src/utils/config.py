@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional
 import yaml
 import os
 from loguru import logger
-from dotenv import load_dotenv
+from src.llm.client_helpers import load_deepseek_config, load_project_dotenv
 
 class ConfigManager:
     _instance = None
@@ -21,14 +21,21 @@ class ConfigManager:
         """加载配置文件和环境变量"""
         try:
             # 加载环境变量
-            load_dotenv()
+            load_project_dotenv()
             
             # 从文件加载基本配置
             with open(config_path, 'r', encoding='utf-8') as f:
                 self._config = yaml.safe_load(f)
                 
             # 使用环境变量覆盖配置
-            self._config['api']['openai']['api_key'] = os.getenv('OPENAI_API_KEY', self._config['api']['openai']['api_key'])
+            deepseek_config = load_deepseek_config(self._config)
+            self._config.setdefault('api', {})['deepseek'] = {
+                'api_key': deepseek_config.api_key,
+                'base_url': deepseek_config.base_url,
+                'model': deepseek_config.model,
+                'temperature': deepseek_config.temperature,
+                'max_tokens': deepseek_config.max_tokens,
+            }
             self._config['rivergame']['host'] = os.getenv('RIVER_GAME_HOST', self._config['rivergame']['host'])
             self._config['rivergame']['port'] = int(os.getenv('RIVER_GAME_PORT', self._config['rivergame']['port']))
             
@@ -69,8 +76,8 @@ class ConfigManager:
     def validate_config(self) -> bool:
         """验证配置是否完整"""
         required_keys = [
-            'api.openai.api_key',
-            'api.openai.model',
+            'api.deepseek.api_key',
+            'api.deepseek.model',
             'rivergame.host',
             'rivergame.port'
         ]
