@@ -130,6 +130,8 @@ python generate_trajectory.py
 
 ## 行为约定（给我自己看的）
 
+0. **多 agent 协作**：开始新任务前先读 `AGENTS.md` 和 `WORKLOG.md`，并按其中的 fetch / rebase / push 协议执行。涉及共享文件（`README.md`、`.gitignore`、`requirements.txt`、`pytest.ini`、`CLAUDE.md`、`AGENTS.md`、`WORKLOG.md`）时，commit message 用 `shared:` 前缀。
+
 1. **学习标签**：每次产出实质性代码 / 设计 / 决策后，附 🎓 学习标签（见 ~/.claude/CLAUDE.md）。Plumbing 类操作（移文件、pip install）可省略。
 2. **决策前看规划文档**：用户对计划文档投入了大量思考，不要忽视它们另起炉灶。
 3. **新意点防伪**：用户研究的差异化点是 (1) Goal-level Gherkin (2) 三类 failure 反思 (3) Mutation Testing + LLM Oracle。任何"重新设计架构"的建议必须保留这三点。
