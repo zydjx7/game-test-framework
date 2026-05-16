@@ -17,7 +17,8 @@
 - [Codex] 2026-05-16 shared: track `CLAUDE.md`, ignore `.claude/` metadata -> `e096d08`
 - [Claude] 2026-05-16 docs: add DeepSeek legacy-model deprecation note -> `0cec04e`
 - [Claude] 2026-05-16 test: add DeepSeek API connectivity smoke test -> `51b3596`
-- [Codex] 2026-05-16 shared: add repo-level multi-agent protocol and worklog
+- [Codex] 2026-05-16 shared: add repo-level multi-agent protocol and worklog -> `81fe5d8`
+- [Claude] 2026-05-16 shared: drop sensei-reporting clauses from project CLAUDE.md
 
 ## Current In Progress
 

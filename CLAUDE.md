@@ -10,7 +10,7 @@
 
 | Phase | 月份 | 核心目标 |
 |---|---|---|
-| **0**（当前）| M1 | 重构 + ViZDoom 环境就绪 + 老师 buy-in |
+| **0**（当前）| M1 | 重构 + ViZDoom 环境就绪 |
 | 1 | M2-3 | Perception（VLM + Ground Truth 对比） |
 | 2 | M4-5 | Action Executor + Goal-level Gherkin + 最小 agent loop |
 | 3 | M6-7 | Reflection（三类 failure 分类与恢复） |
@@ -25,13 +25,11 @@
 **目标**：
 1. 完成原 AssaultCube 项目的模块化重构（perception 接口抽出）
 2. 在 sandbox（沙盒环境）中验证 ViZDoom 可以跑通
-3. 准备好向丸山老师定期汇报的成果（demo + 数据 + 简短报告）
 
 **Phase 0 完成定义**：
 - ✅ AssaultCube baseline 测试仍能跑通（不被改坏）
 - ✅ ViZDoom hello world 能产出 ammo trajectory（轨迹）+ 截图数据集
 - ✅ 主项目"安全重构"完成：4 模块目录 + `GameStatePerceptor` 接口就位
-- ✅ 一份给老师的进度汇报材料就绪（不需要他先批准才推进）
 
 具体步骤看 → `F:\OBSIDIAN\Obsidian Vault\论文\ViZDoom-hello-world-两天路线.md`
 
@@ -39,7 +37,6 @@
 
 - **没有 hard blocker（硬阻塞）**。研究室文化是"看成果给建议"，不在每个决策上等老师。
 - 进行中：ViZDoom sandbox 验证（已到 Step 2.1+）+ 主项目安全重构 **并行推进**
-- 给老师的汇报应定期主动准备（每 Phase 末或关键决策后），但**不是推进的 gate（关卡）**
 
 ## 目标架构（基于既有重构状态）
 
