@@ -93,7 +93,7 @@ pip install -r requirements.txt
 ```bash
 OPENAI_API_KEY=your_deepseek_api_key
 OPENAI_BASE_URL=https://api.deepseek.com
-OPENAI_MODEL=deepseek-chat
+OPENAI_MODEL=deepseek-v4-flash
 USE_LLM_ANALYSIS=true
 ```
 
