@@ -50,11 +50,16 @@
   - CLAUDE.md planning-docs table updated: Doc/research-plan.md is now first
     (marked ⭐ 权威版), Obsidian entry demoted to "mirror, AI do not edit".
 
+- [Codex] 2026-05-19 shared: migrate Phase 0.2 ViZDoom sandbox into main repo
+  - `env/` is project source, not a virtualenv; use `.venv/` for local Python environments.
+  - Do not commit `_vizdoom.ini`, screenshots, or trajectory outputs.
+  - `experiments/vizdoom/hello_doom.py` is the real ViZDoom wrapper smoke command.
+
 ## Current In Progress
 
-- None. Phase 0.1 closure, safety cleanup, and repository coordination setup are complete.
+- None. Phase 0.2 ViZDoom sandbox migration is implemented and verified with mocked pytest + AssaultCube BDD regression.
 
 ## Next Task
 
-- Phase 0.2: move ViZDoom sandbox work into the future `env/` source directory.
+- Phase 1: add ViZDoom ground-truth and VLM perceptors after Phase 0.2 verification.
 

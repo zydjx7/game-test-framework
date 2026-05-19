@@ -10,6 +10,7 @@ loguru>=0.5.3
 opencv-python>=4.5.0
 numpy>=1.21.0
 pillow>=8.0.0
+vizdoom>=1.2.0,<2.0
 pytesseract>=0.3.10
 matplotlib>=3.5.0
 flask>=2.2.0

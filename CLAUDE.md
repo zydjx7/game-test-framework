@@ -74,7 +74,8 @@ F:\game-testing-main\
 
 | Phase | 新建目录 / 文件 | 既有目录扩充 |
 |---|---|---|
-| 1 (M2-3) | `env/`（ViZDoom env，从 sandbox 迁入）；`experiments/`（评估脚本） | `perception/` 加 `ground_truth.py` + `vlm_perceptor.py` |
+| 0.2 (M1) | `env/`（ViZDoom wrapper，从 sandbox 迁入）；`experiments/vizdoom/`（hello-world 脚本） | — |
+| 1 (M2-3) | `experiments/`（评估脚本） | `perception/` 加 `ground_truth.py` + `vlm_perceptor.py` |
 | 2 (M4-5) | `actions/`（primitives + composites）；`agent/loop.py` | — |
 | 3 (M6-7) | — | `agent/` 加 `reflection.py` + `memory.py`；`experiments/` 加评估脚本 |
 | 4 (M8-9) | `oracle/`（monitors + llm_oracle） | `env/scenarios/mutations/` 加 mutated .wad 文件 |
@@ -83,7 +84,7 @@ F:\game-testing-main\
 
 1. **`Code/` 和 `src/` 永远不动**。本科 baseline 是论文 Section IV 的对比基础，重命名/迁移/"清理"会破坏 baseline 的可比性
 2. **每个 Phase 只新建该 Phase 需要的目录**，不要预建 `actions/` / `agent/` / `oracle/` 等空目录"占位"。空目录污染仓库 + 让人误以为已有实现
-3. **概念上的 6 个顶层模块**（`perception/` / `env/` / `actions/` / `agent/` / `oracle/` / `experiments/`）是**终态**，不是 Phase 0 起点。Phase 0.1 只有 `perception/`
+3. **概念上的 6 个顶层模块**（`perception/` / `env/` / `actions/` / `agent/` / `oracle/` / `experiments/`）是**终态**，不是 Phase 0 起点。Phase 0.1 只有 `perception/`，Phase 0.2 新增 `env/` 和 `experiments/vizdoom/`
 4. **已有目录由后续 Phase 在其中加文件**（如 Phase 1 在 `perception/` 加新 perceptor 文件），不要重建同名目录
 5. **如果某个 Phase 觉得"应该顺便建另一个目录"**，那是 scope creep 信号，停下来反思
 
@@ -136,9 +137,10 @@ F:\game-testing-main\
 python -m pytest
 python Code\bdd\run_tests.py --mode predefined --feature generated_test.feature --target assaultcube
 
-# 未来 ViZDoom 主线（Phase 0 之后）
-python env\vizdoom_env.py    # self-test
-python generate_trajectory.py
+# Phase 0.2 ViZDoom wrapper smoke
+python env\vizdoom_env.py
+python experiments\vizdoom\hello_doom.py
+python experiments\vizdoom\generate_trajectory.py
 ```
 
 ## 行为约定（给我自己看的）

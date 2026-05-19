@@ -76,7 +76,7 @@ project/
 │       └── cv_perceptor.py             # 包装 Code/GameStateChecker
 │
 ├── ⭐ Phase 1+ 渐进新增（每个 Phase 只加它需要的，不预建空目录）
-│   ├── env/                            # Phase 1: ViZDoom 环境封装（从 sandbox 迁入）
+│   ├── env/                            # Phase 0.2: ViZDoom 环境封装（从 sandbox 迁入）
 │   │   ├── vizdoom_env.py
 │   │   └── scenarios/
 │   ├── perception/                     # 既有目录扩充（不重复新建）
@@ -92,7 +92,7 @@ project/
 │   ├── oracle/                         # Phase 4: 判定器 + 监控
 │   │   ├── llm_oracle.py
 │   │   └── monitors.py
-│   └── experiments/                    # Phase 1 起持续积累评估脚本
+│   └── experiments/                    # Phase 0.2 起持续积累实验脚本
 │       ├── eval_perception.py
 │       ├── eval_reflection.py
 │       └── eval_oracle.py
@@ -108,6 +108,7 @@ project/
 **关键原则**：
 - **既有 Code/ 和 src/ 是 baseline，不重命名、不迁移、不"清理"**。Code/bdd/ 就是 bdd_runner，Code/bdd/test_generator/ 就是 gherkin_generator，无需另起目录
 - **Phase 0.1 唯一新增的目录是 `perception/`**（✅ 已完成），定义了统一接口 + 包装既有 CV
+- **Phase 0.2 新增 `env/` 和 `experiments/vizdoom/`**（✅ 已完成），把 ViZDoom sandbox 核心 wrapper 和 hello-world 脚本迁入主项目
 - Phase 1+ 新模块按需新增在项目根目录，跟既有 Code/ src/ 并列，**不要预建空目录**
 
 **为什么 Code/ 下既有模块"功能上就是 4 模块"也不重命名**：既有结构已经验证通过（pytest 全绿 + run_tests.py 跑通 DeepSeek + behave 全链路），改名/搬家无功能收益，纯增风险。论文里需要时直接讲"我们的 bdd_runner 模块（位于 Code/bdd/）"即可。
@@ -172,13 +173,15 @@ class CVPerceptor(GameStatePerceptor):
 - ✅ 新增 `tests/test_cv_perceptor.py` 测包装层（不需要真跑 Flask，mock 即可）
 - ✅ 既有所有测试和命令仍然全绿
 
-#### 0.2 ViZDoom 环境搭建
+#### 0.2 ViZDoom 环境搭建 ✅
 
 ```bash
 pip install vizdoom
 ```
 
 写一个 `env/vizdoom_env.py`，封装 ViZDoom 启动、状态读取、动作执行。
+
+Phase 0.2 已将 sandbox 中的核心 wrapper 迁入 `env/`，并将 4 个 hello-world / trajectory 脚本迁入 `experiments/vizdoom/`。生成的截图、trajectory 和 `_vizdoom.ini` 仍是本地产物，不进入 Git。
 
 最小可运行示例（你这一周就要跑通）：
 
@@ -230,8 +233,8 @@ game.close()
 
 ### 输出
 
-- [ ] `env/vizdoom_env.py` 能跑 basic.wad，能打印 ammo/health
-- [ ] 原 AssaultCube 测试仍然能跑（baseline 保留）
+- [x] `env/vizdoom_env.py` 能跑 basic.wad，能打印 ammo/health（核心 wrapper 已迁入；真实运行用 `experiments/vizdoom/hello_doom.py`）
+- [x] 原 AssaultCube 测试仍然能跑（baseline 保留）
 - [ ] （可选）一段简短 demo 录屏（ViZDoom 跑起来 + ammo 数字打印），作为 Phase 0 总结资料
 
 ### 成功标准

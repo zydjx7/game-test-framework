@@ -8,7 +8,7 @@
 
 > 🎓 **修士研究项目**（立命館大学情報理工学研究科 M1, 2026 年 4 月入学）
 > 研究方向：基于 LLM Agent + VLM 的轻量级 FPS 游戏自动化测试框架
-> 当前阶段：**Phase 0.1 完成** — 从 AssaultCube 静态截图测试迁移到 ViZDoom 动态 agent loop
+> 当前阶段：**Phase 0.2 完成** — ViZDoom wrapper 已迁入主项目，下一步进入 ground truth / VLM perception
 
 ## 📖 项目概述
 
@@ -20,7 +20,7 @@
 
 项目分两层：
 - **AssaultCube baseline**（已完成）：本科论文系统，作为论文 Section IV 的对比基线保留
-- **ViZDoom main line**（Phase 1+ 渐进新增）：Python API + ground truth + ACS 脚本可注入 bug
+- **ViZDoom main line**（Phase 0.2+ 渐进新增）：Python API + ground truth + ACS 脚本可注入 bug
 
 两层通过 [perception/base.py](perception/base.py) 的 `GameStatePerceptor` 统一接口连接。
 
@@ -63,11 +63,11 @@ game-testing-main/
 │
 ├── 🧪 tests/                           # pytest（含新 test_cv_perceptor.py）
 │
-├── 📁 env/                             # ⏳ Phase 1 新增：ViZDoom 环境封装
+├── 📁 env/                             # ✅ Phase 0.2 新增：ViZDoom 环境封装
 ├── 📁 actions/                         # ⏳ Phase 2
 ├── 📁 agent/                           # ⏳ Phase 2-3
 ├── 📁 oracle/                          # ⏳ Phase 4
-└── 📁 experiments/                     # ⏳ Phase 1+ 渐增（对比实验脚本）
+└── 📁 experiments/                     # ✅ Phase 0.2 起渐增（ViZDoom hello-world / 对比实验脚本）
 ```
 
 ## 🚀 快速开始
@@ -112,6 +112,9 @@ python run_tests.py --mode predefined --feature generated_test.feature --target 
 
 # 跑 pytest（含 Phase 0.1 新单元测试）
 python -m pytest
+
+# Phase 0.2 ViZDoom wrapper smoke（需要本机已安装 ViZDoom，可能打开窗口）
+python experiments/vizdoom/hello_doom.py
 ```
 
 ## 🧩 Perception 接口（Phase 0.1）

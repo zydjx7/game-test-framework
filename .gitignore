@@ -34,7 +34,7 @@ wheels/
 .installed.cfg
 *.egg
 
-# 注意：不再 ignore `env/`（曾经是 Python venv 约定，但与 Phase 1 ViZDoom 的
+# 注意：不再 ignore `env/`（曾经是 Python venv 约定，但与 Phase 0.2 ViZDoom 的
 # `env/` 目录冲突）。请用 `.venv/` 命名虚拟环境。
 
 # ===================================================================
@@ -66,6 +66,11 @@ Code/AnimationtestingSupport/FIFA experiments, code, doc/Implementation/movenet_
 
 # Local research PDFs are not redistributed from this public repository.
 Doc/*.pdf
+
+# ViZDoom local experiment artifacts
+experiments/vizdoom/screenshots/
+experiments/vizdoom/trajectory_*/
+**/_vizdoom.ini
 
 # ===================================================================
 # 系统文件
