@@ -33,18 +33,22 @@
     whether that note should live in commit body / WORKLOG / AGENTS.md instead.
   - User as message forwarder is an anti-pattern; persist decisions where the next
     agent will actually look.
-- [Claude] 2026-05-16 shared: clarify architecture progression in project CLAUDE.md
+- [Claude] 2026-05-16 shared: clarify architecture progression in project CLAUDE.md -> `42d58ea`
   - "Phase 0 完成定义" no longer says "4 模块目录" (ambiguous: bdd-side vs perception-side).
   - Added explicit per-Phase directory table and 5-point progression principle.
   - Architectural rule: do NOT pre-create empty `actions/` / `agent/` / `oracle/`
     directories; each Phase only creates what it needs. The 6 concept directories
     (perception/env/actions/agent/oracle/experiments) are end-state, not Phase 0.
-  - The authoritative 5-Phase plan lives at `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md`
-    (next session will sync it into `Doc/research-plan.md`). 10 inconsistencies were
-    fixed in that file in this same chat turn, including: deletion of Phase 0.4
-    (folded into Phase 1.3), marking Phase 1.1 / 1.5 as done, removing sensei-reporting
-    clauses, removing internship section (TBD), deleting Week-1 section, replacing
-    GPT-4o-mini with TBD-Western-baseline placeholder.
+- [Claude] 2026-05-16 shared: sync research plan into repo as Doc/research-plan.md
+  - Doc/research-plan.md is now the authoritative 5-Phase master plan.
+  - Obsidian mirror at F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md is kept
+    for the user's reading comfort but is **not authoritative**. AI agents must NOT
+    edit the Obsidian file; edit Doc/research-plan.md instead, then user manually
+    syncs repo → Obsidian.
+  - AGENTS.md adds an "Architecture of Record" section requiring agents to consult
+    Doc/research-plan.md before any architectural decision.
+  - CLAUDE.md planning-docs table updated: Doc/research-plan.md is now first
+    (marked ⭐ 权威版), Obsidian entry demoted to "mirror, AI do not edit".
 
 ## Current In Progress
 

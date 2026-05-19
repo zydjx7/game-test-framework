@@ -77,6 +77,29 @@ Default routing: prefer commit body for code-tied decisions, prefer WORKLOG for
 cross-task alerts, prefer AGENTS.md for stable rules. When in doubt, write in
 the lowest tier that still binds far enough.
 
+## Architecture of Record
+
+`Doc/research-plan.md` is the authoritative 5-Phase research plan for this
+project. It defines the phase structure, module ownership, design invariants,
+"do not do X" lists, and anticipated defense Q&A.
+
+Rules:
+
+- **Before any architectural decision** (new top-level directory, scope change,
+  phase reorder, new module added, baseline-vs-new-line boundary change), read
+  the relevant Phase section of `Doc/research-plan.md` first.
+- If your proposed change conflicts with the plan, either:
+  1. update `Doc/research-plan.md` in the **same commit** as the code change,
+     using `shared:` prefix; or
+  2. explain in the commit body's `Notes for future agents:` section why the
+     deviation is justified.
+- Do **not** silently diverge code from the plan. Either the plan is wrong
+  (then update it) or the code is wrong (then fix it).
+- The user maintains a personal Obsidian mirror at
+  `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md` for nicer reading;
+  that file is not authoritative. AI agents must not edit it -- always edit
+  `Doc/research-plan.md` instead.
+
 ## Shared Files
 
 Treat these as shared coordination surfaces:

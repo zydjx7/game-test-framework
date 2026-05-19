@@ -99,8 +99,9 @@ F:\game-testing-main\
 
 | 文档 | 内容 |
 |---|---|
-| `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md` | 5 个 Phase 的完整 master plan |
-| `F:\OBSIDIAN\Obsidian Vault\论文\ViZDoom-hello-world-两天路线.md` | 当前 sprint 的具体步骤 |
+| `Doc/research-plan.md` ⭐ **权威版** | 5 个 Phase 的完整 master plan（git 仓库内） |
+| `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md` | Obsidian 镜像（用户阅读用，非权威；AI 不要改这个） |
+| `F:\OBSIDIAN\Obsidian Vault\论文\ViZDoom-hello-world-两天路线.md` | 当前 sprint 的具体步骤（仍在 Obsidian） |
 | `F:\OBSIDIAN\Obsidian Vault\论文\项目架构.md` | 旧（AssaultCube）状态，参考用 |
 | `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想.md` | 旧 Phase 规划（AssaultCube 版本），已被 ViZDoom 版替代 |
 
