@@ -27,9 +27,9 @@
 2. 在 sandbox（沙盒环境）中验证 ViZDoom 可以跑通
 
 **Phase 0 完成定义**：
-- ✅ AssaultCube baseline 测试仍能跑通（不被改坏）
-- ✅ ViZDoom hello world 能产出 ammo trajectory（轨迹）+ 截图数据集
-- ✅ 主项目"安全重构"完成：4 模块目录 + `GameStatePerceptor` 接口就位
+- ✅ AssaultCube baseline 测试仍能跑通（不被改坏） — Phase 0.1 已验证 `python -m pytest`: 24 passed + 4 legacy
+- 🟡 ViZDoom hello world 能产出 ammo trajectory（轨迹）+ 截图数据集 — sandbox 已做到 Step 2.4，待 Phase 0.2 迁入 `env/`
+- ✅ 主项目 perception 接口就位：`perception/` 目录新增 `GameStatePerceptor` ABC + `CVPerceptor` 包装层（Phase 0.1）
 
 具体步骤看 → `F:\OBSIDIAN\Obsidian Vault\论文\ViZDoom-hello-world-两天路线.md`
 
@@ -52,25 +52,40 @@
 
 **因此不需要建 gherkin_generator/ bdd_runner/ assertion/ 新目录**。既有 Code/ 结构功能上就是它们。
 
+### 现状（Phase 0.1 末）
+
 ```
-project/
-├── Code/                既有 AssaultCube baseline（不动）
-├── src/                 既有共享层 + legacy（不动）
-├── tests/               既有 pytest（持续维护）
-│
-├── perception/          ⭐ Phase 0.1 唯一新增
-│   ├── base.py          GameStatePerceptor 抽象接口
-│   └── cv_perceptor.py  包装 Code/GameStateChecker
-│
-├── env/                 Phase 1: ViZDoom 环境（从 sandbox 迁入）
-├── perception/          Phase 1+ 扩充: ground_truth.py + vlm_perceptor.py
-├── actions/             Phase 2
-├── agent/               Phase 2-3
-├── oracle/              Phase 4
-└── experiments/         Phase 1+ 渐增
+F:\game-testing-main\
+├── Code/                既有 AssaultCube baseline（永不动）
+├── src/                 既有共享层 + legacy（永不动）
+├── tests/               pytest，持续维护
+├── scripts/             冒烟测试和实用脚本（Phase 0.1 新增）
+├── perception/          ⭐ Phase 0.1 新增 — 统一感知接口
+│   ├── base.py          ✅ GameStatePerceptor ABC + GameState dataclass
+│   ├── cv_perceptor.py  ✅ 包装 Code/GameStateChecker/LogicLayer
+│   └── __init__.py
+├── Doc/                 文档目录
+├── AGENTS.md            多 agent 协作协议（Codex 起草）
+├── WORKLOG.md           人类可读的协作日志
+└── CLAUDE.md            本文件
 ```
 
-**关键原则**：既有 Code/ 和 src/ **不重命名、不迁移、不"清理"**。改名无功能收益，纯增风险。
+### Phase 渐进新增（**不预建空目录**）
+
+| Phase | 新建目录 / 文件 | 既有目录扩充 |
+|---|---|---|
+| 1 (M2-3) | `env/`（ViZDoom env，从 sandbox 迁入）；`experiments/`（评估脚本） | `perception/` 加 `ground_truth.py` + `vlm_perceptor.py` |
+| 2 (M4-5) | `actions/`（primitives + composites）；`agent/loop.py` | — |
+| 3 (M6-7) | — | `agent/` 加 `reflection.py` + `memory.py`；`experiments/` 加评估脚本 |
+| 4 (M8-9) | `oracle/`（monitors + llm_oracle） | `env/scenarios/mutations/` 加 mutated .wad 文件 |
+
+### 架构演进原则（重要 — 防止 AI 自作主张）
+
+1. **`Code/` 和 `src/` 永远不动**。本科 baseline 是论文 Section IV 的对比基础，重命名/迁移/"清理"会破坏 baseline 的可比性
+2. **每个 Phase 只新建该 Phase 需要的目录**，不要预建 `actions/` / `agent/` / `oracle/` 等空目录"占位"。空目录污染仓库 + 让人误以为已有实现
+3. **概念上的 6 个顶层模块**（`perception/` / `env/` / `actions/` / `agent/` / `oracle/` / `experiments/`）是**终态**，不是 Phase 0 起点。Phase 0.1 只有 `perception/`
+4. **已有目录由后续 Phase 在其中加文件**（如 Phase 1 在 `perception/` 加新 perceptor 文件），不要重建同名目录
+5. **如果某个 Phase 觉得"应该顺便建另一个目录"**，那是 scope creep 信号，停下来反思
 
 ## 关键设计决定（不要回退）
 

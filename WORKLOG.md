@@ -28,11 +28,23 @@
 - [Claude] 2026-05-16 test: add DeepSeek API connectivity smoke test -> `51b3596`
 - [Codex] 2026-05-16 shared: add repo-level multi-agent protocol and worklog -> `81fe5d8`
 - [Claude] 2026-05-16 shared: drop sensei-reporting clauses from project CLAUDE.md -> `bdc394c`
-- [Claude] 2026-05-16 shared: codify three-tier decision-persistence hierarchy in AGENTS.md
+- [Claude] 2026-05-16 shared: codify three-tier decision-persistence hierarchy in AGENTS.md -> `b41671a`
   - When you want to "tell the user something" about another agent's work, ask first
     whether that note should live in commit body / WORKLOG / AGENTS.md instead.
   - User as message forwarder is an anti-pattern; persist decisions where the next
     agent will actually look.
+- [Claude] 2026-05-16 shared: clarify architecture progression in project CLAUDE.md
+  - "Phase 0 完成定义" no longer says "4 模块目录" (ambiguous: bdd-side vs perception-side).
+  - Added explicit per-Phase directory table and 5-point progression principle.
+  - Architectural rule: do NOT pre-create empty `actions/` / `agent/` / `oracle/`
+    directories; each Phase only creates what it needs. The 6 concept directories
+    (perception/env/actions/agent/oracle/experiments) are end-state, not Phase 0.
+  - The authoritative 5-Phase plan lives at `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md`
+    (next session will sync it into `Doc/research-plan.md`). 10 inconsistencies were
+    fixed in that file in this same chat turn, including: deletion of Phase 0.4
+    (folded into Phase 1.3), marking Phase 1.1 / 1.5 as done, removing sensei-reporting
+    clauses, removing internship section (TBD), deleting Week-1 section, replacing
+    GPT-4o-mini with TBD-Western-baseline placeholder.
 
 ## Current In Progress
 
