@@ -39,6 +39,44 @@ After finishing a task:
 truth for exact commit hashes. For an entry created in the same commit as the work,
 the hash may be omitted; do not create a second commit only to backfill that hash.
 
+## Persisting Decisions and Warnings
+
+Important judgments and "do not do X" notes must not live only in chat reports to
+the human user — the next agent will never see those chats. Use this three-tier
+hierarchy, in order of how tightly the note binds to a specific change:
+
+1. **Commit message body** — judgments tied to the code change itself. Add a
+   `Notes for future agents:` paragraph at the end of the body:
+
+   ```
+   refactor: consolidate DeepSeek client configuration
+
+   ... [main message body] ...
+
+   Notes for future agents:
+   - API_TYPE env var was retired here.
+   - Do not reintroduce it unless multi-provider support is redesigned.
+   ```
+
+2. **`WORKLOG.md` multi-line entry** — alerts the next agent must see at task
+   start (the Start-of-Task Checklist tails WORKLOG). Indent as a sub-bullet
+   beneath the main entry:
+
+   ```
+   - [Codex] 2026-05-16 refactor: consolidate DeepSeek client -> `c943659`
+     - API_TYPE is intentionally retired; do not restore it in docs.
+   ```
+
+3. **`AGENTS.md` (this file)** — long-term collaboration rules that span tasks.
+   Edit only when the rule itself is being changed.
+
+`HANDOFF.md` is intentionally **not** created. Revisit that idea only if work
+starts spanning multiple days / branches and the above three tiers stop scaling.
+
+Default routing: prefer commit body for code-tied decisions, prefer WORKLOG for
+cross-task alerts, prefer AGENTS.md for stable rules. When in doubt, write in
+the lowest tier that still binds far enough.
+
 ## Shared Files
 
 Treat these as shared coordination surfaces:
