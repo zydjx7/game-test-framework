@@ -41,6 +41,51 @@ LLM Agent + Mutation Testing + 多类型 Failure Recovery
 跟 RiverGame 的差异：RiverGame 静态规约，你动态 agent loop。
 跟 SIMA/Voyager 的差异：它们关心任务完成，你关心 bug detection。
 
+### Research Claim（2026-05-20 定稿，必须可证伪）
+
+> **在 FPS 游戏 bug 检测任务上，"LLM Agent + Goal-level BDD" 范式相比传统"硬编码 BDD 断言"，能检测更多 mutation-injected bug，且系统失败模式可被分类为 perception / execution / logic 三类。**
+
+拆解（empirical study 三件套）：
+
+| 层 | 内容 |
+|---|---|
+| **Claim 1（主）** | `detection_rate(LLM Agent system) > detection_rate(hardcoded BDD baseline)` |
+| **Claim 2（次）** | Agent 失败模式可分类为 perception / execution / logic 三类，且每类有可观察特征 + 可设计的恢复策略 |
+| **Metric** | (a) per-bug detection rate; (b) false positive rate; (c) failure mode distribution; (d) time-to-detect |
+| **Baseline** | (a) 本科系统（硬编码 step function + 模板匹配） |
+| **消融对照** | (b) full system - reflection; (c) full system - LLM oracle; (d) step-level Gherkin vs goal-level Gherkin |
+
+**Claim 跟职业目标的对齐**（米哈游 / 网易 AI Agent 岗）：
+
+- "LLM Agent + Goal-level BDD" 范式 → 命中 JD: Planning, Tool Use, Function Calling, Multi-step Agent
+- 失败模式分类 + 恢复 → 命中 JD: Self-Reflection, Memory, Agent 输出质量评测
+- mutation testing evaluation → 命中 JD: 自动评测、稳定性评估、LLM-as-Judge
+- 完整链路（perception → action → reflection → oracle） → 命中 JD: 完整 Agent 系统设计经验
+
+### 论文必交付物（不可少）
+
+由 Q3 "论文里只能保留一张图"反推，最终论文必须有：
+
+1. **一张系统架构图**（Section III）：展示 perception / agent / reflection / oracle / mutation 5 模块协同
+2. **一张主对比表**（Section IV）：detection rate × {hardcoded BDD baseline, full system, ablation×3}
+3. **一张失败模式分布图**（Section IV）：3 类 failure 的 case 数与分布，证明 Claim 2
+
+任何不直接支撑这 3 件交付物的工作，**降级到 future work 或砍掉**。
+
+### 简化优先级原则（M1 完成度 ≠ 工业完成度）
+
+每个模块画清 v1 边界：
+
+| 模块 | 工业完成度（不做） | M1 v1（要做） |
+|---|---|---|
+| Perception | 4 backend × sampling sensitivity × 多场景 | 1 backend × 1 scenario × spike 跑通 |
+| Action library | 10+ composite + 完整 DSL | 5 个 composite + 60 行 Gherkin parser |
+| Reflection | TITAN 全套（Progress + Reflection + Coverage + Cross-run Memory） | 单步重试：失败一次 → 重看 → 重投票 |
+| LLM Oracle | 多 agent 协作 + 完整 reasoning chain | 单 LLM judge prompt + JSON 输出 |
+| Mutation | 100 个 mutation + 自动生成 | 8-10 个手工 .acs，单点改动 |
+
+**简化版每个模块"跑通了"≠"做透了"**。M1 的目标是每个模块都有自己的代码 + 一段能 90 秒讲清的 demo。深度等以后实习/工作时遇到具体场景再补。
+
 ---
 
 ## 1. 整体架构（目标态）
@@ -328,6 +373,19 @@ class VLMPerceptor(GameStatePerceptor):
 
 **关键决策依据**：保留 1 个 western backend 是为 paper generalizability；同家族（Qwen3-VL-Plus vs Flash）+ 本地（Qwen2.5-VL 7B）共同构成 cost-vs-capability frontier，这本身就是论文 Section IV.A 的一个 narrative 增量。
 
+**⚠️ Phase 阶段使用规模（2026-05-20 修正）**：
+
+| Phase | 用几个 backend | 用几个 scenario | 调用规模 | 目的 |
+|---|---|---|---|---|
+| **Phase 1 (spike)** | **1 个**（Qwen3-VL-Flash，最便宜） | 1 个（basic） | ~50-100 次 | **打通链路 + 看第一个 accuracy 数字** |
+| **Phase 2-3** | 1 个（沿用 Phase 1） | 2-3 个 | 由 agent loop 决定 | agent 用 perception，不评估 perception |
+| **Phase 4 (完整 eval)** | **4 个全上** | 3 个 | ~5000-10000 次 | mutation testing + perception backend 对比一起跑 |
+
+**不要在 Phase 1 跑 4 backend 完整 eval**。原因：
+1. 链路没跑通前，跑大量数据 = 浪费
+2. prompt 第一版可能要改 3-5 次，4 backend × 改 5 次 = 灾难
+3. Phase 1 主线是"证明 perception 可用"，不是"评估 perception 各家强弱"
+
 Prompt 设计（关键）：参考 TITAN §3.2 的"先抽象后具体"思路。
 不要直接问 "ammo 是多少"，而是分两步：
 - "ammo 状态属于 low / medium / high 哪一类？"
@@ -402,22 +460,29 @@ for sampling_name in ["event_driven", "uniform", "stratified"]:
 原 AssaultCube 截图库继续作为 baseline 评估对象 ——
 **论文里这就是 Section "Comparison with prior art"**。
 
-### 输出
+### 输出（Phase 1 spike 版本，1 周内可达）
 
-- [ ] `perception/ground_truth.py` + `perception/vlm_perceptor.py`
-- [ ] `perception/backends/{gemini_flash, qwen3_plus, qwen3_flash, qwen25_local}.py`（4 个 backend 适配器）
-- [ ] `env/trajectory_recorder.py` + `scripts/record_trajectories.py`
-- [ ] `experiments/sampling/keyframe_extractor.py`（3 种采样策略）
-- [ ] `experiments/eval_perception.py` 跑一次产出对比 CSV
-- [ ] 一份对比表（论文 Section IV.A 草稿，含 sampling sensitivity）
+- [ ] `Doc/phase1-design.md` 半页 design doc（GameState 字段 + prompt v1 + metric 定义）
+- [ ] `perception/ground_truth.py`（从 game_variables 读 GT）
+- [ ] `perception/vlm_perceptor.py` + `perception/backends/qwen3_vl_flash.py`（**单 backend**）
+- [ ] `env/trajectory_recorder.py`（录全程 tick）
+- [ ] `scripts/record_trajectories.py`（跑 5 局 basic.wad）
+- [ ] `experiments/eval_perception_spike.py`（5 局 × ~10 keyframes = 50 次 VLM 调用）
+- [ ] 一份 spike 报告（半页 Markdown，回答："perception 这条链路通不通？accuracy 大致是多少？")
 
-### 成功标准
+### 成功标准（spike 完成定义）
 
-- 4 个 VLM backend 至少 3 个跑通（4 个全跑通最佳）
-- 多字段（ammo / health / enemy_visible）× 多场景（`basic` / `defend_the_center` / `deadly_corridor`）评估完成
-- 对比 CSV 包含 sampling sensitivity（至少 `stratified` + `uniform` 两种）
-- 至少 1 个 backend 在主报告（`stratified` sampling）下 ammo accuracy ≥ 90%
-- 一轮完整 eval 实际成本 ≤ ¥100（成本控制本身是研究能力的一部分，要记录到 `experiments/cost_tracking.md`）
+- 链路打通：trajectory 录制 → keyframe 采样 → VLMPerceptor → GroundTruthPerceptor → accuracy 数字
+- 看到第一个数字：basic.wad 上 ammo accuracy（任何值都 OK，不卡 90%）
+- 至少一类 failure case 能定位原因（prompt 问题 / 解析问题 / 视觉问题）
+- spike 总成本 ≤ ¥5
+
+### Phase 1 后置任务（不在 Phase 1 做，搬到 Phase 4）
+
+- ❌ ~~4 backend 对比~~ → 搬到 Phase 4 跟 mutation testing 一起跑
+- ❌ ~~多 scenario 评估~~ → Phase 2-3 agent loop 自然会扩 scenario
+- ❌ ~~sampling sensitivity~~ → Phase 4 完整 eval 时再做
+- ❌ ~~50 episodes 大规模数据~~ → Phase 4 一次性跑齐
 
 ### 这一阶段不要做的事
 

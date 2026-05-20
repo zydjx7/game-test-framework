@@ -62,11 +62,20 @@
   - Sampling sensitivity analysis is REQUIRED in the output table; single-sampling results are not acceptable for Section IV.A.
   - New success criterion: per-eval cost ≤ ¥100, tracked in `experiments/cost_tracking.md`.
 
+- [Claude] 2026-05-20 shared: add Research Claim section and downscale Phase 1 to spike
+  - §0 adds explicit "Research Claim" with claim / metric / baseline triplet. Plan was previously a feature list; now anchored on a falsifiable empirical claim.
+  - Main claim: detection_rate(LLM Agent + Goal-level BDD) > detection_rate(hardcoded BDD) on mutation-injected bugs, with failures classifiable into perception / execution / logic.
+  - §0 adds "M1 simplification priority": each module has v1 boundary; do NOT chase industrial completeness in any single module.
+  - Phase 1.3 adds explicit "Phase usage" table: Phase 1 uses ONE backend (Qwen3-VL-Flash) on ONE scenario as a spike. Full 4-backend comparison moves to Phase 4 to share infrastructure with mutation testing.
+  - Phase 1 output / success criteria downscaled: spike target is "link works + first accuracy number", NOT "90% accuracy across 4 backends × 3 scenarios". Per-spike budget ≤ ¥5.
+  - Removed from Phase 1 scope (moved to Phase 4): 4-backend comparison, multi-scenario eval, sampling sensitivity, 50-episode large-scale data.
+
 ## Current In Progress
 
-- None. Phase 1 plan locked; implementation pending.
+- None. Phase 1 spike plan locked; implementation pending.
 
 ## Next Task
 
-- Phase 1 Step 1: implement `env/trajectory_recorder.py` + `scripts/record_trajectories.py`, record 50 episodes across `basic` / `defend_the_center` / `deadly_corridor` scenarios.
+- Phase 1 Stage 0: verify `python experiments/vizdoom/hello_doom.py` runs on user's 4090 Laptop. Until this passes, do NOT start trajectory recorder.
+- Then Phase 1 Stage A: write `Doc/phase1-design.md` (half page) covering GameState fields (from ViZDoom basic.cfg available_game_variables) + VLM prompt v1 + per-field accuracy metric.
 
