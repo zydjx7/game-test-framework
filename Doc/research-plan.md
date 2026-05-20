@@ -307,18 +307,26 @@ class VLMPerceptor(GameStatePerceptor):
         # 4. 失败时返回 None（让上层 reflection 处理）
 ```
 
-**Backend 选型**：
+**Backend 选型（2026-05 定稿，4 选）**：
 
-| Backend | 角色 | 备注 |
-|---|---|---|
-| DeepSeek-VL2 | 主力国产 | 跟 DeepSeek 是同一家，账号已有 |
-| Qwen-VL-Max（阿里）| 备用国产 | 国内 API，求职加分项 |
-| [Western baseline, TBD] | 论文 baseline 对比 | 见下方说明 |
+| Backend | 角色 | 类型 | 备注 |
+|---|---|---|---|
+| **Gemini 2.5 Flash** | Western baseline（generalizability across vendors） | API | 唯一西方代表，对抗审稿人"全国产"质疑；Flash 档而非 Pro 控成本 |
+| **Qwen3-VL-Plus** | 中文阵营能力代表 | API | 阿里 2025 主推，中文场景训练充分，性价比优于 Max |
+| **Qwen3-VL-Flash** | 同家族超低价档 | API | 与 Plus 同源对比 "scale effect"（论文 ablation 必备） |
+| **Qwen2.5-VL 7B（INT4 量化）** | 边缘部署可行性 | 本地 vLLM，目标硬件 4090 Laptop 16GB | 零边际成本 + 商业游戏不可能把每帧画面外发，本地部署经验是实习加分项 |
 
-**Western baseline 选型推迟到 Phase 1 启动时决定**（VLM 领域演进太快，提前定容易踩坑）。
-候选池：Claude 4.x Sonnet / GPT-5 系列 / Gemini 2.5 Pro。
-按当时 (1) 价格 (2) 海外信用卡可用性 (3) vision 能力 benchmark 选一个。
-**仅用于论文 baseline 对比，不进 production loop**——不要在 Phase 1.4 之后还依赖它。
+**砍掉的候选项**（决策记录，请勿恢复）：
+
+- ~~DeepSeek-VL2~~：DeepSeek 视觉能力远弱于其纯 LLM；同价位 Qwen3-VL-Flash 更强
+- ~~GPT-4o~~：成本是 Gemini 2.5 Flash 的 ~10 倍，对论文 narrative 增量小；GPT-4o-mini 也未必比 Gemini 2.5 Flash 强
+- ~~Claude Sonnet 4.x~~：同样太贵，且 Anthropic 在中国就业语境曝光度低
+- ~~Qwen-VL-Max~~：Qwen3-VL-Plus 出来后已无必要保留 Max
+- ~~GLM-4V / Step-1V~~：可作为后续 ablation 补充，但 4 个主对比已够 Section IV.A
+
+**预算量级**：单轮完整 evaluation（4 backends × 50 episodes × ~30 keyframes）< ¥50；研究期内迭代 5-10 轮 ≤ ¥500，硕士预算可承受。
+
+**关键决策依据**：保留 1 个 western backend 是为 paper generalizability；同家族（Qwen3-VL-Plus vs Flash）+ 本地（Qwen2.5-VL 7B）共同构成 cost-vs-capability frontier，这本身就是论文 Section IV.A 的一个 narrative 增量。
 
 Prompt 设计（关键）：参考 TITAN §3.2 的"先抽象后具体"思路。
 不要直接问 "ammo 是多少"，而是分两步：
@@ -327,28 +335,64 @@ Prompt 设计（关键）：参考 TITAN §3.2 的"先抽象后具体"思路。
 
 可以从 ViZDoom HUD 直接读，但 HUD 字体清晰，VLM 应该不难。
 
-#### 1.4 对比实验脚本
+#### 1.4 数据流水线（实验前提）
+
+**关键事实**：ViZDoom 默认 35 tick/秒，一个 episode 通常 1000-2100 tick。
+盲采 100 帧 → 90% 信息冗余；逐 tick 调 VLM → 4 backend × 50 episodes × 2000 帧 = 40 万次调用，成本爆炸。
+**必须分离 (a) 全程录制 (b) 离线挑帧 (c) VLM 推理 三个阶段**。
+
+##### 1.4.1 Trajectory Recorder（新增 `env/trajectory_recorder.py`）
+
+录全程 `(tick_id, screen_buffer, game_variables, action)` → pickle 保存。
+分离"采集"和"评估"两个阶段，方便反复 replay 不同采样策略而不重跑游戏。
 
 ```python
-# experiments/eval_perception.py
-"""
-跑 N 局 basic.wad，每帧分别用：
-- GroundTruthPerceptor (GT)
-- CVPerceptor (旧 baseline)
-- VLMPerceptor (多个 backend)
-比较准确率、延迟、成本
-输出 CSV
-"""
+# env/trajectory_recorder.py
+class TrajectoryRecorder:
+    def record_episode(self, scenario: str, policy: Callable, max_tics: int = 2100):
+        """跑一局，存全程 tick 数据到 data/trajectories/{scenario}_{ts}.pkl"""
 ```
 
-输出表格大概长这样（论文里直接用）：
+##### 1.4.2 Keyframe Sampling 协议（新增 `experiments/sampling/`）
 
-| Perceptor | Field | Accuracy | Avg Latency | Cost/1k frames |
-|---|---|---|---|---|
-| CV (template) | ammo | 95.6% | 12ms | 0 |
-| VLM DeepSeek-VL2 | ammo | 92.1% | 1.8s | ¥0.5 |
-| VLM Qwen-VL-Max | ammo | 94.3% | 2.1s | ¥0.8 |
-| VLM [Western baseline, TBD] | ammo | TBD | TBD | TBD |
+3 种采样策略（论文里要做 sampling sensitivity analysis）：
+
+| 策略 | 实现 | 用途 |
+|---|---|---|
+| `event_driven` | 仅在 game_variables 变化的 tick 采 | 信息密度高，accuracy 上限 |
+| `uniform` | 固定 N tick 间隔（如每 20 tick） | 包含静态帧，accuracy 下限 |
+| `stratified` | 战斗 N₁ + 探索 N₂ + 死亡前 N₃ | 平衡，作为主报告 |
+
+每个 episode 输出约 30-50 keyframes。50 episodes × 4 backends ≈ 6000-10000 调用。
+
+##### 1.4.3 Evaluation 脚本 `experiments/eval_perception.py`
+
+伪代码（实际实现见 Phase 1 Step 6）：
+
+```python
+trajectories = load_trajectories("data/trajectories/")
+for sampling_name in ["event_driven", "uniform", "stratified"]:
+    keyframes = sample(trajectories, strategy=sampling_name)
+    for backend in [gemini_flash, qwen3_plus, qwen3_flash, qwen25_local]:
+        for frame in keyframes:
+            gt   = GroundTruthPerceptor().perceive(frame.screen, vizdoom_state=frame.state)
+            pred = VLMPerceptor(backend).perceive(frame.screen)
+            log_row(gt, pred, backend, sampling_name, frame.scenario)
+```
+
+##### 1.4.4 输出表格示例
+
+| Sampling | Perceptor | Field | Scenario | Accuracy | Avg Latency | Cost / 1k frames |
+|---|---|---|---|---|---|---|
+| stratified | CV (template) | ammo | basic | 95.6% | 12 ms | 0 |
+| stratified | Qwen3-VL-Flash | ammo | basic | TBD | TBD | ~¥0.4 |
+| stratified | Qwen3-VL-Plus | ammo | basic | TBD | TBD | ~¥2 |
+| stratified | Gemini 2.5 Flash | ammo | basic | TBD | TBD | ~$0.5 |
+| stratified | Qwen2.5-VL 7B (local) | ammo | basic | TBD | TBD | 0 |
+| event_driven | ... 同上 4 行 | (sensitivity column) | ... | ... | ... | ... |
+| uniform | ... 同上 4 行 | (sensitivity column) | ... | ... | ... | ... |
+
+**Sensitivity analysis 是论文厚度增量**：报告同一 backend 在 3 种 sampling 下的 accuracy 差距，论证结论不依赖采样方法。
 
 #### 1.5 把本科 CV 模块迁移作为 baseline ✅（已在 Phase 0.1 完成）
 
@@ -360,16 +404,20 @@ Prompt 设计（关键）：参考 TITAN §3.2 的"先抽象后具体"思路。
 
 ### 输出
 
-- [ ] `perception/{base,ground_truth,cv_perceptor,vlm_perceptor}.py` 跑通
-- [ ] 3 个 VLM backend 至少 2 个能跑通
-- [ ] `eval_perception.py` 跑一次产出对比 CSV
-- [ ] 一份对比表（论文 Section IV.A 草稿）
+- [ ] `perception/ground_truth.py` + `perception/vlm_perceptor.py`
+- [ ] `perception/backends/{gemini_flash, qwen3_plus, qwen3_flash, qwen25_local}.py`（4 个 backend 适配器）
+- [ ] `env/trajectory_recorder.py` + `scripts/record_trajectories.py`
+- [ ] `experiments/sampling/keyframe_extractor.py`（3 种采样策略）
+- [ ] `experiments/eval_perception.py` 跑一次产出对比 CSV
+- [ ] 一份对比表（论文 Section IV.A 草稿，含 sampling sensitivity）
 
 ### 成功标准
 
-- 在 ViZDoom basic.wad 上，VLM 对 ammo 字段的准确率 ≥ 90%
-- 能产出 CV vs VLM vs GT 的三方对比数据
-- 至少一个国产 backend 跑通（找工作加分）
+- 4 个 VLM backend 至少 3 个跑通（4 个全跑通最佳）
+- 多字段（ammo / health / enemy_visible）× 多场景（`basic` / `defend_the_center` / `deadly_corridor`）评估完成
+- 对比 CSV 包含 sampling sensitivity（至少 `stratified` + `uniform` 两种）
+- 至少 1 个 backend 在主报告（`stratified` sampling）下 ammo accuracy ≥ 90%
+- 一轮完整 eval 实际成本 ≤ ¥100（成本控制本身是研究能力的一部分，要记录到 `experiments/cost_tracking.md`）
 
 ### 这一阶段不要做的事
 

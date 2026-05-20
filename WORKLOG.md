@@ -55,11 +55,18 @@
   - Do not commit `_vizdoom.ini`, screenshots, or trajectory outputs.
   - `experiments/vizdoom/hello_doom.py` is the real ViZDoom wrapper smoke command.
 
+- [Claude] 2026-05-20 shared: lock Phase 1 VLM backend selection and data pipeline design
+  - Phase 1.3 backend table finalized to 4: Gemini 2.5 Flash + Qwen3-VL-Plus + Qwen3-VL-Flash + local Qwen2.5-VL 7B (INT4).
+  - Removed candidates (do NOT restore without re-discussion): DeepSeek-VL2 (weak vision), GPT-4o / Claude Sonnet (cost), Qwen-VL-Max (superseded by Qwen3-VL-Plus).
+  - Phase 1.4 rewritten as 3-stage pipeline: trajectory recorder → keyframe sampling (event_driven / uniform / stratified) → eval script. Do NOT skip the recorder and call VLM live during episode — separating record and eval lets us replay sampling strategies cheaply.
+  - Sampling sensitivity analysis is REQUIRED in the output table; single-sampling results are not acceptable for Section IV.A.
+  - New success criterion: per-eval cost ≤ ¥100, tracked in `experiments/cost_tracking.md`.
+
 ## Current In Progress
 
-- None. Phase 0.2 ViZDoom sandbox migration is implemented and verified with mocked pytest + AssaultCube BDD regression.
+- None. Phase 1 plan locked; implementation pending.
 
 ## Next Task
 
-- Phase 1: add ViZDoom ground-truth and VLM perceptors after Phase 0.2 verification.
+- Phase 1 Step 1: implement `env/trajectory_recorder.py` + `scripts/record_trajectories.py`, record 50 episodes across `basic` / `defend_the_center` / `deadly_corridor` scenarios.
 
