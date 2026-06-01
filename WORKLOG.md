@@ -89,12 +89,17 @@
   - tests/test_vizdoom_env.py FakeDoomGame gained set_render_hud; added test_render_hud_opt_in_is_forwarded and a default-off assertion. Full suite 34 passed, 4 legacy deselected.
   - Do NOT default render_hud to True: pixel HUD would pollute RL-style observations that read state from game_variables. Perception capture opts in explicitly.
 
+- [Claude] 2026-06-01 feat: Stage B Step 3 ground-truth perceptor
+  - perception/ground_truth.py: GroundTruthPerceptor reads ammo/health from a recorded game_variables dict (oracle for VLM accuracy). Shared ammo_level() bucketing (high>=18 / medium 9-17 / low<9 / unknown) lives here so GT and VLM scoring use identical boundaries.
+  - tests/test_ground_truth.py (10 tests) covers boundaries + dict/live-state extraction + no-raise on missing fields. Full suite 44 passed, 4 legacy deselected.
+  - Verified on real recorded data: ammo 26(high)->17(medium)->7(low), health 100->24.
+
 ## Current In Progress
 
-- Phase 1 Stage B: Steps 1-2 done (recorder + record script + HUD fix). Next is Step 3 ground_truth.py.
+- Phase 1 Stage B: Steps 1-3 done. Next is Step 4 (prompt file) + Step 5 (qwen3-vl-flash backend, needs DASHSCOPE_API_KEY).
 
 ## Next Task
 
-- Phase 1 Stage B Step 3: implement `perception/ground_truth.py` (GroundTruthPerceptor reading ammo/health from game_variables + shared ammo_level boundary function). No API key needed.
-- User action: add `DASHSCOPE_API_KEY=sk-...` line to `.env` (real-name account; AI cannot do this). Needed before Step 5 (backend) / Step 8 (eval).
+- Phase 1 Stage B Step 4-6: prompts/vizdoom_ammo_v1.txt, perception/backends/qwen3_vl_flash.py (openai SDK vs DashScope OpenAI-compatible endpoint), perception/vlm_perceptor.py.
+- User has added DASHSCOPE_API_KEY to .env (confirmed 2026-06-01).
 
