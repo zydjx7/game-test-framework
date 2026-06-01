@@ -94,12 +94,19 @@
   - tests/test_ground_truth.py (10 tests) covers boundaries + dict/live-state extraction + no-raise on missing fields. Full suite 44 passed, 4 legacy deselected.
   - Verified on real recorded data: ammo 26(high)->17(medium)->7(low), health 100->24.
 
+- [Claude] 2026-06-01 feat: Stage B Steps 4-6 VLM perception path + LIVE smoke passed
+  - prompts/vizdoom_ammo_v1.txt: TITAN abstract-then-concrete prompt; describes the real Doom status-bar layout (AMMO = far-left red digits, HEALTH = next red number with %).
+  - perception/backends/qwen3_vl_flash.py: Qwen3VLFlashBackend over DashScope OpenAI-compatible endpoint using the existing openai SDK (NO dashscope SDK). BackendResponse carries text + latency + token usage. Reuses src.llm.client_helpers (load_project_dotenv, openai_client_kwargs).
+  - perception/vlm_perceptor.py: VLMPerceptor (backend-agnostic) owns prompt + image encode (RGB->BGR->PNG->base64 data URI) + tolerant JSON parse. Honours no-raise contract; failures land in raw_response.
+  - tests/test_vlm_perceptor.py (10 tests, FakeBackend, no API). Full suite 54 passed, 4 legacy deselected.
+  - LIVE smoke (real DashScope call, 3 real frames): VLM read ammo 26/17/7 EXACT-MATCH with GT, levels high/medium/low all correct. ~4-6s/call, ~525 in / ~15 out tokens. Pipeline works end-to-end; accuracy looks high (full number pending Step 8).
+
 ## Current In Progress
 
-- Phase 1 Stage B: Steps 1-3 done. Next is Step 4 (prompt file) + Step 5 (qwen3-vl-flash backend, needs DASHSCOPE_API_KEY).
+- Phase 1 Stage B: Steps 1-6 done, VLM path verified live. Next is Step 7 (event-driven keyframe sampling) + Step 8 (spike eval -> CSV + first accuracy number).
 
 ## Next Task
 
-- Phase 1 Stage B Step 4-6: prompts/vizdoom_ammo_v1.txt, perception/backends/qwen3_vl_flash.py (openai SDK vs DashScope OpenAI-compatible endpoint), perception/vlm_perceptor.py.
-- User has added DASHSCOPE_API_KEY to .env (confirmed 2026-06-01).
+- Phase 1 Stage B Step 7: experiments/sampling/ammo_change_keyframes.py (sample one frame per ammo-value change).
+- Phase 1 Stage B Step 8: experiments/eval_perception_spike.py (run VLM vs GT over keyframes from 5 episodes, write CSV with concrete/abstract accuracy + latency + cost).
 
