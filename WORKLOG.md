@@ -128,12 +128,18 @@
   - 3 goals locked: (1) firing consumes ammo; (2) idle does NOT consume ammo (control / the meaningful decision test); (3) repeated firing reduces ammo by ~N (multi-step). Enemy-visibility goal deferred until a VLM enemy_visible field exists.
   - Stage 0 fire-timing measured: a fire composite must advance ~16 tics of ATTACK for exactly 1 ammo decrement (4/8 tics -> delta 0; 14/16/20 -> delta 1). Cause: episode_start_time=10 gun-raise + 4-tic PISTOL1. A naive 4-tic fire would read ammo-unchanged and be MIS-CLASSIFIED as a logic bug -- composite must use 16 tics + settle tics.
 
+- [Claude] 2026-06-01 feat: Phase 2 Stage A action library (primitives + composites)
+  - actions/primitives.py: ActionPrimitives over VizDoomEnv. fire_once() holds ATTACK for FIRE_TICS=16 (Stage 0: episode_start_time 10 + PISTOL1 4 => ~14 to first shot; 16 = margin for exactly 1 decrement) then SETTLE_TICS=2 so a pixel perceptor reads the updated HUD. wait()/observe() too.
+  - actions/composites.py: TestActions (Layer-3 templates the agent chooses among). fire_and_check_ammo / idle_and_check_ammo return {ammo_before, ammo_after, delta}. Perceptor is INJECTED (GroundTruthPerceptor for deterministic v1, VLMPerceptor optional). run()/list_templates() for the agent loop. __test__=False to avoid pytest collecting the Test*-named production class.
+  - tests/test_actions.py (9 tests, FakeActionEnv modeling the 14-tic cadence, no ViZDoom). Full suite 67 passed, 4 legacy deselected.
+  - Real-ViZDoom smoke: fire delta=1 (26->25), idle delta=0, fire x3 -> 26->23. All 3 goal mechanics confirmed on the real game.
+
 ## Current In Progress
 
-- None. Phase 1 complete; Phase 2 plan locked + partial Stage 0 done. Ready for Stage A implementation.
+- Phase 2 Stage A done (action library). Next is Stage B (Goal dataclass + Gherkin parser).
 
 ## Next Task
 
-- Phase 2 Stage A: actions/primitives.py (fire_once ~16 tics, observe) + actions/composites.py (fire_and_check_ammo, observe) + tests. Reuses VLMPerceptor/GroundTruthPerceptor + VizDoomEnv(render_hud=True).
-- Then Stage B: agent/goal.py (Goal dataclass + ~60-line Gherkin parser).
+- Phase 2 Stage B: agent/goal.py (Goal dataclass + ~60-line goal-level Gherkin parser, Success: line -> lambda). No API key needed.
+- Then Stage C: agent/loop.py with DeepSeek native function-calling decide step.
 
