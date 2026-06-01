@@ -20,6 +20,17 @@ basic 改为 defend_the_center：
 **对 keyframe 采样的影响**：ammo 每 ~14 tic 才变一次，所以采样必须 **event-driven
 （ammo 值变化时取帧）**，不能等距乱采，否则会采到大量 ammo 相同的冗余帧。
 
+5. **HUD 默认不渲染（spike-blocking）**：所有内置 scenario 的 `.cfg` 都写
+   `render_hud = false`，所以底部状态栏（ammo/health 数字）**默认不画**。VLM 要读数字
+   就必须开 HUD。修复：`VizDoomEnv` 新增 `render_hud: bool = False` 参数（默认 False 保留
+   Phase 0.2 的 RL 行为），perception 录制时传 `render_hud=True`（`record_spike_trajectories.py`
+   已写死 True）。开 HUD 后底部出现经典 Doom 状态栏：左下红色数字 = AMMO，旁边 = HEALTH%，
+   与 game_variables 完全对应。**第一次录的无 HUD 数据已废弃重录。**
+
+   > narrative 注记：开 HUD 后 VLM 读数字本质接近 OCR，审稿人可能质疑"为何不用 OCR"。
+   > 这已被研究设计覆盖——CV baseline（模板匹配/OCR）正是对照项；VLM 的真正优势在
+   > `enemy_visible` 等语义字段（Phase 2-3），Phase 1 spike 先证明数字读取链路通即可。
+
 ## 1. Goal（这次要回答的问题）
 
 > **Qwen3-VL-Flash 在 ViZDoom defend_the_center 的 ammo HUD 识别上，能不能跑通端到端链路，accuracy 大致在什么量级？**

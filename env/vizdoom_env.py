@@ -56,6 +56,7 @@ class VizDoomEnv:
         scenario: str = "basic",
         window_visible: bool = True,
         resolution: str = "RES_640X480",
+        render_hud: bool = False,
     ) -> None:
         self.scenario = scenario
         self.vzd = _load_vizdoom()
@@ -68,6 +69,12 @@ class VizDoomEnv:
         self.game.load_config(cfg_path)
         self.game.set_window_visible(window_visible)
         self.game.set_screen_resolution(getattr(self.vzd.ScreenResolution, resolution))
+        # The bundled scenario .cfg files set render_hud = false, so the bottom
+        # status bar (ammo / health digits) is NOT drawn by default. VLM-based
+        # perception needs those digits, so callers doing perception capture must
+        # pass render_hud=True. Default stays False to preserve the original
+        # Phase 0.2 RL-style behaviour (state read from game_variables, not pixels).
+        self.game.set_render_hud(render_hud)
         self.game.init()
 
         self.step_count = 0

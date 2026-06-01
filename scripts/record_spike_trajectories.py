@@ -64,7 +64,10 @@ def main() -> None:
     out_dir = PROJECT_ROOT / args.out_dir
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    with VizDoomEnv(scenario=args.scenario, window_visible=args.window) as env:
+    # render_hud=True so the ammo/health digits are drawn for the VLM to read.
+    with VizDoomEnv(
+        scenario=args.scenario, window_visible=args.window, render_hud=True
+    ) as env:
         button_names = env.get_button_names()
         print(f"Scenario: {args.scenario} | Buttons: {button_names}")
         if len(button_names) < 3 or button_names[2] != "ATTACK":

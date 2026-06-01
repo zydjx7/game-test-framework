@@ -37,6 +37,7 @@ class FakeDoomGame:
         self.loaded_config: str | None = None
         self.window_visible: bool | None = None
         self.screen_resolution: str | None = None
+        self.render_hud: bool | None = None
         self.initialized = False
         self.new_episode_calls = 0
         self.actions: list[list[int]] = []
@@ -51,6 +52,9 @@ class FakeDoomGame:
 
     def set_screen_resolution(self, resolution: str) -> None:
         self.screen_resolution = resolution
+
+    def set_render_hud(self, render_hud: bool) -> None:
+        self.render_hud = render_hud
 
     def init(self) -> None:
         self.initialized = True
@@ -131,8 +135,15 @@ def test_reset_builds_state_and_transposes_screen(fake_vizdoom):
     assert game.loaded_config.endswith("basic.cfg")
     assert game.window_visible is False
     assert game.screen_resolution == "RES_640X480"
+    assert game.render_hud is False  # default off; perception capture opts in
     assert game.initialized is True
     assert game.new_episode_calls == 1
+
+
+def test_render_hud_opt_in_is_forwarded(fake_vizdoom):
+    VizDoomEnv(scenario="basic", window_visible=False, render_hud=True)
+
+    assert FakeDoomGame.instances[-1].render_hud is True
 
 
 def test_step_returns_reward_and_increments_counter(fake_vizdoom):
