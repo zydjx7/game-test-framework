@@ -123,12 +123,17 @@
   - Stage 0 (verify env first, Phase 1 lesson) probed button sets: defend_the_center=3 (turn/attack), deadly_corridor=7 (move-rich), deathmatch=20 (only one with SELECT_WEAPON* weapon switching). Doom has NO manual reload, so the research-plan "reload" goal is replaced.
   - OPEN decisions pending user: (1) scenario defend_the_center vs deathmatch; (2) the 3 goals; (3) confirm deepseek-chat function calling for decide.
 
+- [Claude] 2026-06-01 docs: Phase 2 decisions LOCKED + Stage 0 fire mechanics
+  - Scenario locked = defend_the_center for v1 (reuse all Phase 1 infra; deathmatch weapon-switching deferred). Decide LLM = deepseek-chat native function calling. v1 perception = ammo only.
+  - 3 goals locked: (1) firing consumes ammo; (2) idle does NOT consume ammo (control / the meaningful decision test); (3) repeated firing reduces ammo by ~N (multi-step). Enemy-visibility goal deferred until a VLM enemy_visible field exists.
+  - Stage 0 fire-timing measured: a fire composite must advance ~16 tics of ATTACK for exactly 1 ammo decrement (4/8 tics -> delta 0; 14/16/20 -> delta 1). Cause: episode_start_time=10 gun-raise + 4-tic PISTOL1. A naive 4-tic fire would read ammo-unchanged and be MIS-CLASSIFIED as a logic bug -- composite must use 16 tics + settle tics.
+
 ## Current In Progress
 
-- Phase 2 design doc drafted; awaiting user decisions on scenario + goal set before Stage 0 lock.
+- None. Phase 1 complete; Phase 2 plan locked + partial Stage 0 done. Ready for Stage A implementation.
 
 ## Next Task
 
-- Lock Phase 2 §10 decisions, then Stage 0: verify chosen scenario's action effects, lock the 3 goals + action set.
-- Then Stage A: actions/primitives.py + actions/composites.py.
+- Phase 2 Stage A: actions/primitives.py (fire_once ~16 tics, observe) + actions/composites.py (fire_and_check_ammo, observe) + tests. Reuses VLMPerceptor/GroundTruthPerceptor + VizDoomEnv(render_hud=True).
+- Then Stage B: agent/goal.py (Goal dataclass + ~60-line Gherkin parser).
 
