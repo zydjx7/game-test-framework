@@ -26,6 +26,23 @@ class TestActions:
     # This tells pytest the class is NOT a test case.
     __test__ = False
 
+    # Natural-language descriptions the agent's function-calling decider shows
+    # the LLM so it can pick the right template for a goal. The distinction
+    # between "fire" and "idle" is deliberately explicit so the agent can tell
+    # a fire-goal from a do-not-fire goal.
+    DESCRIPTIONS: Dict[str, str] = {
+        "fire_and_check_ammo": (
+            "Fire exactly one shot, then report ammo before/after and the "
+            "delta. Choose this when the goal is to fire, shoot, or consume "
+            "ammo."
+        ),
+        "idle_and_check_ammo": (
+            "Let the game advance WITHOUT firing, then report ammo "
+            "before/after. Choose this when the goal is about staying idle or "
+            "NOT firing."
+        ),
+    }
+
     def __init__(self, primitives: Any) -> None:
         self.prim = primitives
 
