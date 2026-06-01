@@ -70,27 +70,25 @@
   - Phase 1 output / success criteria downscaled: spike target is "link works + first accuracy number", NOT "90% accuracy across 4 backends × 3 scenarios". Per-spike budget ≤ ¥5.
   - Removed from Phase 1 scope (moved to Phase 4): 4-backend comparison, multi-scenario eval, sampling sensitivity, 50-episode large-scale data.
 
-## Current In Progress
-
-- None. Phase 1 spike plan locked; implementation pending.
-
 - [Claude] 2026-05-20 shared: Phase 1 Stage 0 + A complete; design doc landed
   - Stage 0 verified by user: `experiments/vizdoom/hello_doom.py` runs successfully on 4090 Laptop, game window visible.
-  - Stage A locked in `Doc/phase1-design.md`. Key decisions:
-    - Spike scope: 1 backend (Qwen3-VL-Flash) × basic.wad × ammo only × 5 episodes × 10 keyframes ≈ 50 VLM calls.
-    - VLM prompt v1 uses TITAN §3.2 "abstract-then-concrete" pattern: ammo_level (high/med/low) + ammo (int).
-    - Level boundaries: high>=20, medium 10-19, low<10 (basic.wad starts at 26 ammo).
-    - Metric: exact-match for ammo (no tolerance). Two accuracy numbers reported: abstract + concrete.
-    - Trajectory: full-ATTACK policy, 5 episodes, equidistant 10 keyframes each.
-    - Success criterion: NO threshold gate; "look at the number then decide".
-  - Stage B implementation order locked: trajectory_recorder -> record_script -> ground_truth -> prompt -> backend -> vlm_perceptor -> eval. First PR unit (recorder + record script + unit test) does NOT require API key, can land first.
+  - Stage A locked in `Doc/phase1-design.md` (TITAN abstract-then-concrete prompt, exact-match metric, no threshold gate).
+  - Stage B order: trajectory_recorder -> record_script -> ground_truth -> prompt -> backend -> vlm_perceptor -> eval.
+
+- [Claude] 2026-06-01 feat: Stage B Step 1 (trajectory recorder) + scenario switch to defend_the_center
+  - env/trajectory_recorder.py + scripts/record_spike_trajectories.py + tests/test_trajectory_recorder.py landed. Full suite 33 passed, 4 legacy deselected.
+  - Real-ViZDoom smoke INVALIDATED the basic.wad assumption: basic ammo starts at 50 (not 26) and only varies in [46,50] because the pistol fires every ~14 tics and the episode ends on the single kill. basic cannot exercise medium/low ammo.
+  - DECISION: spike scenario switched basic -> defend_the_center. Constant-ATTACK drives ammo 26->5/7 (high/med/low all covered) + health 100->24. ATTACK is button index 2 in both, so policy [0,0,1] unchanged.
+  - Level boundaries updated to ammo[0,26]: high>=18, medium 9-17, low<9.
+  - Keyframe sampling changed equidistant -> event-driven (sample on ammo-value change), because ammo only changes every ~14 tics; equidistant would oversample identical ammo values.
+  - VLM backend decision: NO dashscope SDK. Use existing openai SDK against DashScope OpenAI-compatible endpoint (base_url https://dashscope.aliyuncs.com/compatible-mode/v1, model qwen3-vl-flash, base64 data-URI images). Reads DASHSCOPE_API_KEY from .env.
 
 ## Current In Progress
 
-- None. Phase 1 Stage A complete; ready for Stage B implementation.
+- Phase 1 Stage B: Step 1 done. Next is Step 3 ground_truth.py (Step 2 record script also done).
 
 ## Next Task
 
-- Phase 1 Stage B Step 1: implement `env/trajectory_recorder.py` + `scripts/record_basic_trajectories.py` + unit test. Does NOT require DashScope API key.
-- In parallel: user registers DashScope account + obtains Qwen3-VL-Flash API key (cannot be done by agents; real-name verification required).
+- Phase 1 Stage B Step 3: implement `perception/ground_truth.py` (GroundTruthPerceptor reading ammo/health from game_variables + shared ammo_level boundary function). No API key needed.
+- User action: add `DASHSCOPE_API_KEY=sk-...` line to `.env` (real-name account; AI cannot do this). Needed before Step 5 (backend) / Step 8 (eval).
 
