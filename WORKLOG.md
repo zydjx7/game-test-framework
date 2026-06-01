@@ -74,8 +74,23 @@
 
 - None. Phase 1 spike plan locked; implementation pending.
 
+- [Claude] 2026-05-20 shared: Phase 1 Stage 0 + A complete; design doc landed
+  - Stage 0 verified by user: `experiments/vizdoom/hello_doom.py` runs successfully on 4090 Laptop, game window visible.
+  - Stage A locked in `Doc/phase1-design.md`. Key decisions:
+    - Spike scope: 1 backend (Qwen3-VL-Flash) × basic.wad × ammo only × 5 episodes × 10 keyframes ≈ 50 VLM calls.
+    - VLM prompt v1 uses TITAN §3.2 "abstract-then-concrete" pattern: ammo_level (high/med/low) + ammo (int).
+    - Level boundaries: high>=20, medium 10-19, low<10 (basic.wad starts at 26 ammo).
+    - Metric: exact-match for ammo (no tolerance). Two accuracy numbers reported: abstract + concrete.
+    - Trajectory: full-ATTACK policy, 5 episodes, equidistant 10 keyframes each.
+    - Success criterion: NO threshold gate; "look at the number then decide".
+  - Stage B implementation order locked: trajectory_recorder -> record_script -> ground_truth -> prompt -> backend -> vlm_perceptor -> eval. First PR unit (recorder + record script + unit test) does NOT require API key, can land first.
+
+## Current In Progress
+
+- None. Phase 1 Stage A complete; ready for Stage B implementation.
+
 ## Next Task
 
-- Phase 1 Stage 0: verify `python experiments/vizdoom/hello_doom.py` runs on user's 4090 Laptop. Until this passes, do NOT start trajectory recorder.
-- Then Phase 1 Stage A: write `Doc/phase1-design.md` (half page) covering GameState fields (from ViZDoom basic.cfg available_game_variables) + VLM prompt v1 + per-field accuracy metric.
+- Phase 1 Stage B Step 1: implement `env/trajectory_recorder.py` + `scripts/record_basic_trajectories.py` + unit test. Does NOT require DashScope API key.
+- In parallel: user registers DashScope account + obtains Qwen3-VL-Flash API key (cannot be done by agents; real-name verification required).
 
