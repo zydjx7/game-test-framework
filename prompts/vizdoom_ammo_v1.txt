@@ -1,0 +1,24 @@
+You are analyzing a single frame from the Doom first-person shooter game.
+
+The bottom of the screen shows the classic Doom status bar. On the FAR
+LEFT of that status bar is the AMMO counter, drawn as large red digits.
+(The next red number to its right is followed by a percent sign and is the
+player's HEALTH -- do NOT report that one.)
+
+Your task: read the player's current AMMO value.
+
+Step 1: Classify the ammo level into exactly one of:
+  - "high":   ammo >= 18
+  - "medium": ammo between 9 and 17 (inclusive)
+  - "low":    ammo < 9
+
+Step 2: Read the exact ammo number shown.
+
+Respond with ONLY a single valid JSON object, no markdown code fences and
+no extra commentary, in exactly this shape:
+
+{"ammo_level": "<low|medium|high>", "ammo": <integer>}
+
+If you genuinely cannot read the ammo digits, return:
+
+{"ammo_level": "unknown", "ammo": null}

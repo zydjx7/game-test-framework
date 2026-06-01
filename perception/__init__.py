@@ -12,6 +12,7 @@ will add ``ground_truth.py`` and ``vlm_perceptor.py`` next to them.
 from .base import GameState, GameStatePerceptor
 from .cv_perceptor import CVPerceptor
 from .ground_truth import GroundTruthPerceptor, ammo_level
+from .vlm_perceptor import VLMPerceptor, encode_image_data_uri, parse_vlm_json
 
 __all__ = [
     "GameState",
@@ -19,4 +20,7 @@ __all__ = [
     "CVPerceptor",
     "GroundTruthPerceptor",
     "ammo_level",
+    "VLMPerceptor",
+    "encode_image_data_uri",
+    "parse_vlm_json",
 ]
