@@ -83,9 +83,15 @@
   - Keyframe sampling changed equidistant -> event-driven (sample on ammo-value change), because ammo only changes every ~14 tics; equidistant would oversample identical ammo values.
   - VLM backend decision: NO dashscope SDK. Use existing openai SDK against DashScope OpenAI-compatible endpoint (base_url https://dashscope.aliyuncs.com/compatible-mode/v1, model qwen3-vl-flash, base64 data-URI images). Reads DASHSCOPE_API_KEY from .env.
 
+- [Claude] 2026-06-01 feat: enable HUD rendering for VLM perception capture
+  - Reading the scenario .cfg files revealed render_hud = false on ALL bundled scenarios, so the bottom status bar (ammo/health digits) is not drawn by default. The first batch of recorded trajectories had NO HUD digits -> VLM would have nothing to read. Spike-blocking.
+  - Fix: VizDoomEnv gains render_hud: bool = False (default preserves Phase 0.2 RL behaviour). record_spike_trajectories.py passes render_hud=True. Verified: re-recorded frames show the classic Doom status bar; red ammo digit matches game_variables ammo exactly.
+  - tests/test_vizdoom_env.py FakeDoomGame gained set_render_hud; added test_render_hud_opt_in_is_forwarded and a default-off assertion. Full suite 34 passed, 4 legacy deselected.
+  - Do NOT default render_hud to True: pixel HUD would pollute RL-style observations that read state from game_variables. Perception capture opts in explicitly.
+
 ## Current In Progress
 
-- Phase 1 Stage B: Step 1 done. Next is Step 3 ground_truth.py (Step 2 record script also done).
+- Phase 1 Stage B: Steps 1-2 done (recorder + record script + HUD fix). Next is Step 3 ground_truth.py.
 
 ## Next Task
 
