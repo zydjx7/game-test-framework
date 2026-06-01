@@ -106,11 +106,17 @@
   - experiments/eval_perception_spike.py: loads recorded trajectories -> samples keyframes -> VLM vs GroundTruthPerceptor -> CSV (experiments/spike_results_<ts>.csv, gitignored) + printed summary (concrete/abstract accuracy, failures, latency, tokens, est. cost).
   - Full suite 58 passed, 4 legacy deselected. Recorded 5 defend_the_center episodes; full spike eval (~100 VLM calls) was run to produce the first accuracy number (see next entry once written).
 
+- [Claude] 2026-06-01 fix: spike sampler now takes settled (middle) frame per ammo run
+  - First spike eval gave concrete accuracy 5/104 = 4.8% but abstract 78.8% with a SYSTEMATIC VLM=GT+1 pattern. Root cause is NOT the VLM: at the tic ammo decrements, the rendered HUD lags game_variables by ~1 tic, so the transition frame shows the old digit. Sampling that edge frame guaranteed an off-by-one.
+  - Diagnostic confirmed 100%: same ammo plateau, transition frame VLM=GT+1 (MISS), middle/last frame VLM=GT (OK).
+  - Fix: sample_ammo_change_keyframes now returns the middle frame of each constant-ammo run (HUD settled), not the first. Tests updated. Re-running the spike eval to get the corrected number.
+  - This is an observation-timing finding (rendered frame must match the state vector); logged in design doc §0 as Section IV.A methodology / threats-to-validity material.
+
 ## Current In Progress
 
-- Phase 1 Stage B: Steps 1-8 implemented. Full spike eval executed; writing the spike report from the CSV.
+- Phase 1 Stage B: re-running spike eval with the fixed sampler. Then write Doc/phase1-spike-report.md.
 
 ## Next Task
 
-- Write Doc/phase1-spike-report.md from the eval CSV (concrete/abstract accuracy, failure cases, decision: proceed to Phase 2 or tune prompt).
+- Write Doc/phase1-spike-report.md from the corrected eval CSV (concrete/abstract accuracy, the HUD-desync finding, decision: proceed to Phase 2 or tune).
 
