@@ -118,12 +118,17 @@
   - Doc/phase1-spike-report.md written. DECISION: perception link works; proceed to Phase 2. Prompt/scoring v2 (drop VLM self-level) deferred to when perception is reused in Phase 2.
   - Phase 1 spike is COMPLETE.
 
+- [Claude] 2026-06-01 docs: Phase 2 design doc DRAFT
+  - Doc/phase2-design.md drafted: Observer->Observer+Actor, 3-layer action library, goal-level Gherkin + Goal dataclass, minimal while-loop agent with DeepSeek native function calling for the decide step (Tool Use / Function Calling genuinely used, not prompt-hacked). No reflection / LangGraph / planning in v1.
+  - Stage 0 (verify env first, Phase 1 lesson) probed button sets: defend_the_center=3 (turn/attack), deadly_corridor=7 (move-rich), deathmatch=20 (only one with SELECT_WEAPON* weapon switching). Doom has NO manual reload, so the research-plan "reload" goal is replaced.
+  - OPEN decisions pending user: (1) scenario defend_the_center vs deathmatch; (2) the 3 goals; (3) confirm deepseek-chat function calling for decide.
+
 ## Current In Progress
 
-- None. Phase 1 spike complete (concrete ammo accuracy 100% on defend_the_center).
+- Phase 2 design doc drafted; awaiting user decisions on scenario + goal set before Stage 0 lock.
 
 ## Next Task
 
-- Phase 2 kickoff (design doc §4): action primitives + composites, goal-level Gherkin parser, minimal agent loop. Reuse VLMPerceptor from Phase 1.
-- Optional pre-Phase-2 cleanup: prompt/scoring v2 (compute ammo_level from the VLM number instead of trusting VLM self-report).
+- Lock Phase 2 §10 decisions, then Stage 0: verify chosen scenario's action effects, lock the 3 goals + action set.
+- Then Stage A: actions/primitives.py + actions/composites.py.
 
