@@ -72,6 +72,10 @@ experiments/vizdoom/screenshots/
 experiments/vizdoom/trajectory_*/
 **/_vizdoom.ini
 
+# Recorded trajectories + spike eval outputs (large local artifacts, never committed)
+data/
+experiments/**/*.csv
+
 # ===================================================================
 # 系统文件
 # ===================================================================
