@@ -1,10 +1,15 @@
 # Phase 2 Design Doc — Action Executor + Goal-level Gherkin + Minimal Agent Loop
 
-> **Status**: DRAFT 2026-06-01. Needs Stage 0 verification + user decisions
-> (see §3, §10) before locking, exactly like Phase 1's basic→defend_the_center
-> correction. Do NOT lock the scenario/action set until Stage 0 is run.
+> **Status**: 2026-06-01 — scenario + goals LOCKED after partial Stage 0
+> (button sets + fire mechanics verified). Remaining Stage 0 / Stage A-D pending.
 > **Inherits from Phase 1**: `VLMPerceptor` (concrete ammo 100%),
 > `GroundTruthPerceptor`, `VizDoomEnv(render_hud=...)`, trajectory infra.
+>
+> **Locked decisions (§10)**:
+> - Scenario = `defend_the_center` for v1 (reuses all Phase 1 infra; deathmatch
+>   weapon-switching deferred to a later extension).
+> - v1 perception = ammo only (reuse Phase 1; NO new perception field in v1).
+> - Decide LLM = `deepseek-chat` native function calling.
 
 ## 1. Goal (what Phase 2 proves)
 
@@ -50,7 +55,17 @@ Phase 1):
 - For each candidate composite, confirm the effect is observable via the
   existing perceptors (ammo via HUD, enemy via VLM semantic field).
 
-**Output of Stage 0**: locked scenario + the concrete action set + the 3 goals.
+**Stage 0 findings (2026-06-01, partial — done):**
+- Scenario locked = `defend_the_center` (button index 2 = ATTACK, as in Phase 1).
+- **Fire timing**: a `fire` composite must advance **~16 tics of ATTACK** to
+  yield exactly 1 ammo decrement. Measured: 4/8 tics → delta 0; 14/16/20 tics →
+  delta 1. Cause: `episode_start_time=10` (gun-raise) + 4-tic PISTOL1 pre-fire
+  ≈ 14 tics to the first shot. **Critical**: a naive 4-tic fire would show
+  ammo unchanged and be mis-read as a logic bug (false positive). The composite
+  uses 16 tics + a few settle tics before observing (HUD/state desync, Phase 1).
+- Observe-only (noop) → ammo unchanged: the negative/control goal works.
+
+**Remaining Stage 0**: none blocking; goals locked in §7.
 
 ## 4. Three-layer Action Library
 
@@ -134,9 +149,23 @@ Proposed files: `agent/goal.py`, `agent/loop.py`.
 
 ## 7. Success Criteria (Phase 2 done = all of)
 
+**The 3 locked goals (all ammo-based, reuse Phase 1 perception):**
+
+| # | Goal | Agent must choose | Success criterion |
+|---|---|---|---|
+| 1 | Firing consumes ammo | `fire_and_check_ammo` | `ammo_before - ammo_after >= 1` |
+| 2 | Idle does NOT consume ammo (control) | `observe` (must NOT fire) | `ammo_before == ammo_after` |
+| 3 | Repeated firing reduces ammo by ~N | `fire_and_check_ammo` ×3 | `ammo_before - ammo_after >= 3` |
+
+Goal 2 is the meaningful decision test: the agent must read the goal and pick
+*observe* rather than *fire*. Goal 3 tests multi-step looping. Enemy-visibility
+goals are deferred until a VLM `enemy_visible` field exists (Phase 2 extension
+or Phase 3), to keep v1 on the proven ammo perception.
+
+**Done = all of:**
 - Given a one-line goal string, the agent selects among ≥2 actions and reaches
   success WITHOUT a hand-written Behave step function.
-- 3 goals pass end-to-end (set fixed in Stage 0).
+- All 3 goals pass end-to-end.
 - `decide` provably uses DeepSeek `tools`/`tool_calls` (not prompt+regex).
 - A short demo run is reproducible from a script.
 
@@ -158,13 +187,11 @@ Proposed files: `agent/goal.py`, `agent/loop.py`.
 - ❌ Cross-episode memory (Phase 3)
 - ❌ LLM oracle / mutation (Phase 4)
 
-## 10. OPEN decisions (need user input before locking)
+## 10. Decisions — LOCKED 2026-06-01
 
-1. **Scenario**: (a) stay on `defend_the_center` (proven, simple, but agent
-   choice = fire/turn/observe) vs (b) `deathmatch` (weapon switching enables a
-   richer "switch_and_check" goal, but a much more complex environment).
-2. **The 3 goals**: e.g. {fire consumes ammo; fire×N reduces ammo by ~N;
-   turning changes enemy visibility} on defend_the_center — final set depends
-   on decision 1.
-3. **Decision LLM**: DeepSeek `deepseek-chat` via native function calling
-   (recommended, already the project's LLM). Confirm.
+1. **Scenario**: `defend_the_center` for v1 (reuses all Phase 1 infra; agent
+   chooses among fire / observe). `deathmatch` weapon-switching is a deferred
+   later extension, not v1.
+2. **The 3 goals**: locked in §7 (fire consumes ammo; idle does not; repeated
+   fire reduces by ~N). Enemy-visibility deferred (needs a new VLM field).
+3. **Decision LLM**: `deepseek-chat` via native function calling. Confirmed.
