@@ -112,11 +112,18 @@
   - Fix: sample_ammo_change_keyframes now returns the middle frame of each constant-ammo run (HUD settled), not the first. Tests updated. Re-running the spike eval to get the corrected number.
   - This is an observation-timing finding (rendered frame must match the state vector); logged in design doc §0 as Section IV.A methodology / threats-to-validity material.
 
+- [Claude] 2026-06-01 docs: Phase 1 spike report — concrete ammo accuracy 100%
+  - Corrected eval (middle-frame sampling): concrete 104/104 = 100.0%, 0 failures, ~¥0.01, ~4.9s/frame. VLM reads clear HUD ammo digits essentially perfectly.
+  - Abstract (VLM self-reported level) only 79.8%: in all 21 misses vlm_ammo == gt_ammo; the VLM applies its own high/med/low intuition near boundaries even though the prompt states the thresholds. Lesson: derive level in code from the concrete number, do not trust VLM self-classification for clear digits.
+  - Doc/phase1-spike-report.md written. DECISION: perception link works; proceed to Phase 2. Prompt/scoring v2 (drop VLM self-level) deferred to when perception is reused in Phase 2.
+  - Phase 1 spike is COMPLETE.
+
 ## Current In Progress
 
-- Phase 1 Stage B: re-running spike eval with the fixed sampler. Then write Doc/phase1-spike-report.md.
+- None. Phase 1 spike complete (concrete ammo accuracy 100% on defend_the_center).
 
 ## Next Task
 
-- Write Doc/phase1-spike-report.md from the corrected eval CSV (concrete/abstract accuracy, the HUD-desync finding, decision: proceed to Phase 2 or tune).
+- Phase 2 kickoff (design doc §4): action primitives + composites, goal-level Gherkin parser, minimal agent loop. Reuse VLMPerceptor from Phase 1.
+- Optional pre-Phase-2 cleanup: prompt/scoring v2 (compute ammo_level from the VLM number instead of trusting VLM self-report).
 
