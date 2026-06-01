@@ -20,23 +20,25 @@ def _traj(frames) -> Trajectory:
     return Trajectory(scenario="defend_the_center", frames=frames)
 
 
-def test_one_keyframe_per_distinct_ammo_value():
-    # ammo holds 26 for several tics, then 25, then 25, then 24
+def test_one_settled_keyframe_per_distinct_ammo_value():
+    # ammo holds 26 for 3 tics, then 25 for 2 tics, then 24 for 1 tic.
+    # Middle-of-run: run[26]=ticks0-2 -> idx1 (tick1); run[25]=ticks3-4 -> idx1 (tick4);
+    # run[24]=tick5 -> idx0 (tick5).
     frames = [
         _frame(0, 26), _frame(1, 26), _frame(2, 26),
         _frame(3, 25), _frame(4, 25),
         _frame(5, 24),
     ]
     keys = sample_ammo_change_keyframes(_traj(frames))
-    assert [f.tick for f in keys] == [0, 3, 5]
+    assert [f.tick for f in keys] == [1, 4, 5]
     assert [f.game_variables["ammo"] for f in keys] == [26, 25, 24]
 
 
-def test_includes_first_frame():
-    frames = [_frame(0, 10), _frame(1, 10)]
+def test_single_run_returns_its_middle():
+    frames = [_frame(0, 10), _frame(1, 10), _frame(2, 10)]
     keys = sample_ammo_change_keyframes(_traj(frames))
     assert len(keys) == 1
-    assert keys[0].tick == 0
+    assert keys[0].tick == 1  # middle of the single run
 
 
 def test_skips_frames_without_ammo():

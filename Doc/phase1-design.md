@@ -31,6 +31,18 @@ basic 改为 defend_the_center：
    > 这已被研究设计覆盖——CV baseline（模板匹配/OCR）正是对照项；VLM 的真正优势在
    > `enemy_visible` 等语义字段（Phase 2-3），Phase 1 spike 先证明数字读取链路通即可。
 
+6. **HUD/state 一帧错位（observation timing，2026-06-01 第一次 spike eval 发现）**：
+   在 ammo game-variable 减 1 的那一 tic，渲染出的 HUD 像素仍显示旧数字一个 tic
+   （screen_buffer 滞后 game_variables ~1 tic）。后果：若 keyframe 取"ammo 值刚变化的
+   转换帧"，VLM 读到的是旧 HUD 数字 = GT+1，**concrete accuracy 崩到 ~5%**（实测 5/104）。
+   诊断：同一 ammo 平台，转换帧 VLM=GT+1（MISS），中间帧/末帧 VLM=GT（OK），100% 复现。
+   **修复**：`sample_ammo_change_keyframes` 改取每个 ammo 平台的**中间帧**（HUD 已稳定），
+   不取转换边缘帧。这是观测时序问题，不是 VLM 能力问题。
+
+   > ⭐ 论文素材：这是一个干净的 "observation timing matters" 案例 ——
+   > rendered frame 与 state vector 必须对应，否则 perception 评估的 ground truth 本身就错。
+   > 可写进 Section IV.A 的 methodology / threats-to-validity。
+
 ## 1. Goal（这次要回答的问题）
 
 > **Qwen3-VL-Flash 在 ViZDoom defend_the_center 的 ammo HUD 识别上，能不能跑通端到端链路，accuracy 大致在什么量级？**
