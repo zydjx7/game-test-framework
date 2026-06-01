@@ -101,12 +101,16 @@
   - tests/test_vlm_perceptor.py (10 tests, FakeBackend, no API). Full suite 54 passed, 4 legacy deselected.
   - LIVE smoke (real DashScope call, 3 real frames): VLM read ammo 26/17/7 EXACT-MATCH with GT, levels high/medium/low all correct. ~4-6s/call, ~525 in / ~15 out tokens. Pipeline works end-to-end; accuracy looks high (full number pending Step 8).
 
+- [Claude] 2026-06-01 feat: Stage B Steps 7-8 keyframe sampling + spike eval harness
+  - experiments/sampling/ammo_change_keyframes.py: event-driven sampler, one frame per distinct ammo value (avoids oversampling the ~14-tic constant-ammo stretches). 4 unit tests.
+  - experiments/eval_perception_spike.py: loads recorded trajectories -> samples keyframes -> VLM vs GroundTruthPerceptor -> CSV (experiments/spike_results_<ts>.csv, gitignored) + printed summary (concrete/abstract accuracy, failures, latency, tokens, est. cost).
+  - Full suite 58 passed, 4 legacy deselected. Recorded 5 defend_the_center episodes; full spike eval (~100 VLM calls) was run to produce the first accuracy number (see next entry once written).
+
 ## Current In Progress
 
-- Phase 1 Stage B: Steps 1-6 done, VLM path verified live. Next is Step 7 (event-driven keyframe sampling) + Step 8 (spike eval -> CSV + first accuracy number).
+- Phase 1 Stage B: Steps 1-8 implemented. Full spike eval executed; writing the spike report from the CSV.
 
 ## Next Task
 
-- Phase 1 Stage B Step 7: experiments/sampling/ammo_change_keyframes.py (sample one frame per ammo-value change).
-- Phase 1 Stage B Step 8: experiments/eval_perception_spike.py (run VLM vs GT over keyframes from 5 episodes, write CSV with concrete/abstract accuracy + latency + cost).
+- Write Doc/phase1-spike-report.md from the eval CSV (concrete/abstract accuracy, failure cases, decision: proceed to Phase 2 or tune prompt).
 
