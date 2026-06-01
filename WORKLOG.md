@@ -134,12 +134,19 @@
   - tests/test_actions.py (9 tests, FakeActionEnv modeling the 14-tic cadence, no ViZDoom). Full suite 67 passed, 4 legacy deselected.
   - Real-ViZDoom smoke: fire delta=1 (26->25), idle delta=0, fire x3 -> 26->23. All 3 goal mechanics confirmed on the real game.
 
+- [Claude] 2026-06-01 feat: Phase 2 Stage B+C+D — goal-level Gherkin + agent loop + live demo
+  - agent/goal.py: Goal dataclass + parse_goals (goal-level Gherkin). Success: line compiles to a sandboxed-eval predicate over the loop's cumulative result (no builtins; Gherkin is trusted input). agent/goals.feature holds the 3 locked goals.
+  - agent/loop.py: run_agent_loop (reactive observe-decide-act-check, no reflection). Goal judged on CUMULATIVE result (first ammo_before .. latest ammo_after) so a single goal can span multiple steps. FunctionCallingDecider uses DeepSeek NATIVE tools/tool_calls (injectable client for tests).
+  - actions/composites.py: added DESCRIPTIONS (per-template text the LLM sees to choose).
+  - tests/test_goal.py (8) + tests/test_agent_loop.py (6, FakeDecider + FakeClient, no API). Full suite 80 passed, 4 legacy deselected.
+  - LIVE Stage D demo (experiments/phase2_agent_demo.py, real DeepSeek FC + real ViZDoom): 3/3 goals achieved. Agent chose fire for the fire-goal, IDLE for the idle-goal (the meaningful decision test -- it did NOT fire), and fire x3 for the reduce-by-3 goal. NO hand-written step functions.
+
 ## Current In Progress
 
-- Phase 2 Stage A done (action library). Next is Stage B (Goal dataclass + Gherkin parser).
+- None. Phase 2 v1 core works end-to-end (goal-level Gherkin -> function-calling agent -> ViZDoom, 3/3 goals).
 
 ## Next Task
 
-- Phase 2 Stage B: agent/goal.py (Goal dataclass + ~60-line goal-level Gherkin parser, Success: line -> lambda). No API key needed.
-- Then Stage C: agent/loop.py with DeepSeek native function-calling decide step.
+- Phase 2 wrap-up options: (a) short Doc/phase2-demo-report.md; (b) add a 3rd action (e.g. turn) or an enemy_visible goal for richer decision; (c) move to Phase 3 (reflection) per research-plan.
+- Optional: prompt/scoring v2 (compute ammo_level from VLM number) carried over from Phase 1.
 
