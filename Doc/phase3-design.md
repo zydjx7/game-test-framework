@@ -43,11 +43,42 @@ class FailureType(Enum):
 - `experiments/eval_reflection.py`: baseline (no reflection) vs proposed,
   reporting the metrics in §6.
 
+- **LangGraph for the reflection control flow** (2026-06-02 decision, moved IN
+  from stretch): Phase 3 introduces branching (check -> success/continue/anomaly;
+  reflect -> perception/execution/logic), which is exactly what a StateGraph
+  models cleanly. Implement the reflective agent as a LangGraph graph
+  (`agent/graph.py`) whose NODES reuse existing code (FunctionCallingDecider,
+  TestActions, reflection.py). Keep the Phase 2 `run_agent_loop` while-version
+  UNCHANGED as the no-reflection baseline — the two versions are the natural
+  baseline-vs-proposed pair for §6 eval. This is genuine LangGraph use (real
+  branching), not a forced rewrite.
+
 **NOT doing (later / stretch):**
 - Cross-episode / long-term memory (research-plan says skip for M1).
-- LangGraph rewrite → W4 stretch only after this works.
 - RAG / case-based reflection → W4 stretch (route-2 bonus).
 - Real mutation-injected LOGIC bugs → Phase 4 (July).
+
+## 2.5 Reflective agent as a LangGraph StateGraph
+
+```
+decide -> act -> check
+                  |- success  -> END
+                  |- continue -> decide
+                  '- anomaly   -> reflect
+                                    |- perception -> re_observe -> decide
+                                    |- execution  -> retry      -> check
+                                    '- logic      -> report     -> END
+```
+
+- Nodes: decide / act / reflect / re_observe / retry / report. Each is a plain
+  Python function over a shared state dict (goal, history, cumulative,
+  last_result, failure_type, status, steps).
+- Conditional edges: after check (3-way) and after reflect (by failure_type).
+- LangGraph orchestrates control flow ONLY; the DeepSeek calls stay in the
+  reused decider/reflection code (LangGraph is used independently of LangChain).
+- Risk control: Stage 0 verifies `pip install langgraph` + a 3-node toy graph
+  runs and can be used without LangChain, BEFORE wiring business logic. Fallback
+  is a while+if/else reflection loop (same behaviour, minus the LangGraph word).
 
 ## 3. Detecting a failure (key design point for implementation)
 
@@ -109,10 +140,12 @@ logic-not-misclassified precision ≥ 80%.
 
 | Stage | Content |
 |---|---|
-| A | per-step expectation + anomaly detection in the loop |
+| 0 | verify langgraph installs + a 3-node toy StateGraph runs (no LangChain) |
+| A | per-step expectation + anomaly detection (works for both loop versions) |
 | B | `agent/reflection.py` (classify + recovery dispatch) + tests (fake LLM) |
-| C | failure-injection wrappers (perception, execution) + tests |
-| D | `experiments/eval_reflection.py` + metrics table + case studies |
+| C | `agent/graph.py` — LangGraph StateGraph wiring decide/act/reflect/recover nodes (reuses B); keep Phase 2 while-loop as the no-reflection baseline |
+| D | failure-injection wrappers (perception, execution) + tests |
+| E | `experiments/eval_reflection.py` (baseline while-loop vs proposed graph) + metrics table + case studies |
 
 ## 9. June packaging note (the actual deliverable)
 

@@ -149,12 +149,18 @@
   - Doc/phase3-design.md drafted: keep the 3-type failure classification (PERCEPTION/EXECUTION/LOGIC, thesis novelty); simplify recovery to one round. Key impl design point: add a PER-STEP expected effect so the loop can detect an anomaly and route it to reflection (Phase 2 only checks the cumulative goal). Failure injection (perception perturb / execution skip) in test wrappers only; LOGIC bugs come from Phase 4.
   - LangGraph stays deferred until reflection adds real branching (then it is a genuine resume item, not forced).
 
+- [Claude] 2026-06-02 docs: move LangGraph INTO Phase 3 (reflection control flow)
+  - User wants to actually apply LangGraph. Correct call: Phase 3 introduces real branching (check -> success/continue/anomaly; reflect -> perception/execution/logic), which is exactly what a StateGraph models cleanly. Phase 2 was linear so a while loop was right; Phase 3 is not.
+  - Decision: implement the reflective agent as a LangGraph StateGraph (agent/graph.py) whose nodes REUSE existing code (FunctionCallingDecider, TestActions, reflection.py). LangGraph orchestrates control flow only; DeepSeek calls stay in reused code; used independently of LangChain.
+  - Keep Phase 2 run_agent_loop (while, no reflection) UNCHANGED -> it is the natural no-reflection baseline for eval (baseline while vs proposed graph). No duplicate work, no forced rewrite.
+  - Risk control: Phase 3 Stage 0 verifies langgraph installs + a 3-node toy graph runs without LangChain BEFORE business logic; fallback is while+if/else (same behaviour, minus the LangGraph keyword). June safety net unchanged (freeze + package if it slips past ~June 14).
+
 ## Current In Progress
 
-- None. Phase 2 v1 complete. Phase 3 plan drafted (Doc/phase3-design.md), scope locked to a June v1.
+- None. Phase 2 v1 complete. Phase 3 plan updated (Doc/phase3-design.md) to use LangGraph for the reflection control flow.
 
 ## Next Task
 
-- Phase 3 Stage A: add a per-step expected effect (e.g. fire_and_check_ammo expects delta>=1) + anomaly detection in run_agent_loop, so a violated expectation routes to reflection.
-- Then Stage B: agent/reflection.py (LLM classifies anomaly into 3 types + dispatches recovery).
+- Phase 3 Stage 0: pip install langgraph; confirm a 3-node StateGraph runs and is usable without LangChain. (requirements.txt update will be a shared: commit.)
+- Phase 3 Stage A: add a per-step expected effect (e.g. fire_and_check_ammo expects delta>=1) + anomaly detection, usable by both the while baseline and the graph version.
 
