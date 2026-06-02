@@ -102,6 +102,49 @@ The LLM is asked to weigh perception vs execution vs logic and justify a logic
 call with evidence (so it does not cry "bug" too easily — false positives are
 the metric we care about).
 
+Implementation note: reflection produces structured output via DeepSeek
+function calling (a single `classify_failure` tool with `failure_type` /
+`confidence` / `reasoning`), consistent with the decider. The recovery action
+is NOT chosen by the LLM — it is looked up from a fixed table by failure type
+(research-plan §5.3), keeping v1 deterministic.
+
+## 4.5 Memory layers (short-term now, RAG-ready for W4)
+
+The agent has two memory layers; only the first is built in v1.
+
+| | short-term (working) | long-term (episodic) |
+|---|---|---|
+| What | the current-episode `history` list | a library of past reflection cases |
+| Scope | one goal/episode (cleared on reset) | across all episodes |
+| How accessed | passed directly into the reflection prompt | embed + vector retrieve (RAG) |
+| Phase | v1 (already in run_agent_loop) | W4 stretch (case-based reflection) |
+
+So today's `history` answers "what did I just do this episode"; it does NOT
+remember past episodes. That cross-episode gap is exactly what the W4 RAG layer
+fills: retrieve the top-k most similar past failures and add them to the
+reflection prompt ("a similar anomaly last time was PERCEPTION, re-observe
+recovered it").
+
+**RAG-ready case structure (build it now, retrieve in W4).** Stage B's
+reflection returns a structured `ReflectionCase`:
+
+```python
+{
+  "anomaly": {...},          # from TestActions.check_expectation
+  "failure_type": "perception|execution|logic",
+  "recovery_action": "re_observe|retry|report",
+  "confidence": 0.0-1.0,
+  "reasoning": "...",
+  "recovered": None,         # filled after recovery runs (Stage C)
+}
+```
+
+v1 just logs these cases (no vector store, no retrieval). W4 adds embedding +
+a lightweight store (Chroma / FAISS / numpy cosine) + top-k retrieval into the
+prompt — **adding retrieval, not re-architecting**, because the case shape is
+already right. The same case log is reused three ways: RAG source, the Stage E
+eval dataset, and thesis case studies.
+
 ## 5. Failure injection harness
 
 To exercise reflection deterministically:
