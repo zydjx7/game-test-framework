@@ -161,9 +161,19 @@
   - README must be route-neutral-but-complete: architecture diagram labels BOTH the Agent layer (Planning/Tool Use/Reflection/LangGraph) AND the testing capabilities (BDD/VLM/bug detection) so both kinds of interviewer find their keywords.
   - Do NOT build extra modules to please both routes; the skeleton already spans both. Core remains: finish Phase 3 + package well.
 
+- [Claude] 2026-06-02 chore: Phase 3 Stage 0 — LangGraph verified
+  - langgraph 1.2.2 installed (pulled langchain-core 1.4.0 transitively; we do NOT import langchain directly). requirements.txt adds `langgraph>=1.2,<2`.
+  - scripts/smoke_langgraph.py: minimal 3-node StateGraph with a CONDITIONAL edge (router sends value>0 to one branch, else the other). Confirms the exact API agent/graph.py will use in Stage C: `from langgraph.graph import StateGraph, START, END`, add_node(plain fn), add_conditional_edges, compile, invoke. Nodes are plain functions -- no LangChain LLM wrappers.
+  - Verified: smoke prints positive(5)/nonpositive(-3); full suite still 80 passed, 4 legacy deselected (new dep does not break collection).
+
 ## Current In Progress
 
-- None. Phase 2 v1 complete. Phase 3 plan updated (Doc/phase3-design.md) to use LangGraph for the reflection control flow. Dual-route job strategy noted; W4 stretch prioritises RAG.
+- None. Phase 3 Stage 0 done (LangGraph verified). Phase 2 v1 complete.
+
+## Next Task
+
+- Phase 3 Stage A: add a per-step EXPECTED EFFECT (e.g. fire_and_check_ammo expects delta>=1) + anomaly detection, usable by both the while baseline and the future graph version. This is the hook that routes a violated expectation to reflection. No API key needed.
+- Then Stage B: agent/reflection.py (classify anomaly into PERCEPTION/EXECUTION/LOGIC + recovery dispatch).
 
 ## Next Task
 
