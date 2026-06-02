@@ -141,12 +141,20 @@
   - tests/test_goal.py (8) + tests/test_agent_loop.py (6, FakeDecider + FakeClient, no API). Full suite 80 passed, 4 legacy deselected.
   - LIVE Stage D demo (experiments/phase2_agent_demo.py, real DeepSeek FC + real ViZDoom): 3/3 goals achieved. Agent chose fire for the fire-goal, IDLE for the idle-goal (the meaningful decision test -- it did NOT fire), and fire x3 for the reduce-by-3 goal. NO hand-written step functions.
 
+- [Claude] 2026-06-02 docs: June roadmap + Phase 3 design draft (internship-portfolio priority)
+  - Career-route decision: target Route 3 (AI Testing) primarily, Route 2 (Agent Engineer) as the overlapping bonus; Route 1 (RL Bot) dropped (no RL in this project). The two missing high-frequency JD keywords (Reflection, Agent evaluation) are BOTH delivered by Phase 3 -> Phase 3 is the highest-ROI next step, NOT polishing Phase 2.
+  - June priority (user-chosen): COMPLETE STORY + PACKAGING. Phase 4 (mutation/oracle) deferred to July.
+  - June plan: W1-2 Phase 3 reflection v1 + eval; W3 packaging (README + architecture diagram + demo GIF + metric tables) = THE job-hunt deliverable; W4 buffer + stretch (LangGraph rewrite, or RAG case-reflection, or a 2-bug mutation teaser).
+  - SAFETY NET: if Phase 3 slips past ~June 14, freeze it and package Phase 0-2 (already a complete story). Never end June with undocumented code.
+  - Doc/phase3-design.md drafted: keep the 3-type failure classification (PERCEPTION/EXECUTION/LOGIC, thesis novelty); simplify recovery to one round. Key impl design point: add a PER-STEP expected effect so the loop can detect an anomaly and route it to reflection (Phase 2 only checks the cumulative goal). Failure injection (perception perturb / execution skip) in test wrappers only; LOGIC bugs come from Phase 4.
+  - LangGraph stays deferred until reflection adds real branching (then it is a genuine resume item, not forced).
+
 ## Current In Progress
 
-- None. Phase 2 v1 core works end-to-end (goal-level Gherkin -> function-calling agent -> ViZDoom, 3/3 goals).
+- None. Phase 2 v1 complete. Phase 3 plan drafted (Doc/phase3-design.md), scope locked to a June v1.
 
 ## Next Task
 
-- Phase 2 wrap-up options: (a) short Doc/phase2-demo-report.md; (b) add a 3rd action (e.g. turn) or an enemy_visible goal for richer decision; (c) move to Phase 3 (reflection) per research-plan.
-- Optional: prompt/scoring v2 (compute ammo_level from VLM number) carried over from Phase 1.
+- Phase 3 Stage A: add a per-step expected effect (e.g. fire_and_check_ammo expects delta>=1) + anomaly detection in run_agent_loop, so a violated expectation routes to reflection.
+- Then Stage B: agent/reflection.py (LLM classifies anomaly into 3 types + dispatches recovery).
 
