@@ -13,7 +13,7 @@ GameStatePerceptor interface, so composites are perceptor-agnostic.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from perception.base import GameState, GameStatePerceptor
 
@@ -41,6 +41,23 @@ class TestActions:
             "before/after. Choose this when the goal is about staying idle or "
             "NOT firing."
         ),
+    }
+
+    # Per-template EXPECTED EFFECT (Phase 3 Stage A). Each maps a template to a
+    # human-readable description (shown to the reflection LLM) plus a predicate
+    # over the result dict. When a template runs and its predicate is FALSE, the
+    # step is an anomaly -> reflection (Stage B/C) decides whether it was a
+    # perception / execution / logic failure. This is the hook that turns the
+    # cumulative-goal loop into something reflection can react to per step.
+    EXPECTATIONS: Dict[str, Dict[str, Any]] = {
+        "fire_and_check_ammo": {
+            "describe": "firing should decrease ammo by at least 1",
+            "check": lambda r: (r.get("delta") or 0) >= 1,
+        },
+        "idle_and_check_ammo": {
+            "describe": "idling should leave ammo unchanged",
+            "check": lambda r: (r.get("delta") or 0) == 0,
+        },
     }
 
     def __init__(self, primitives: Any) -> None:
@@ -76,6 +93,29 @@ class TestActions:
     @classmethod
     def list_templates(cls) -> List[str]:
         return ["fire_and_check_ammo", "idle_and_check_ammo"]
+
+    @classmethod
+    def check_expectation(
+        cls, template_name: str, result: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """Return None if the step met its expectation (or has none), else an
+        anomaly dict the reflection layer can consume.
+
+        An anomaly carries enough for the reflection prompt to reason about
+        "expected vs actual" without re-deriving anything.
+        """
+
+        spec = cls.EXPECTATIONS.get(template_name)
+        if spec is None:
+            return None
+        check: Callable[[Dict[str, Any]], bool] = spec["check"]
+        if check(result):
+            return None
+        return {
+            "action": template_name,
+            "expected": spec["describe"],
+            "result": result,
+        }
 
     def _read(self, perceptor: GameStatePerceptor) -> GameState:
         state = self.prim.observe()

@@ -126,3 +126,31 @@ class TestComposites:
             "fire_and_check_ammo",
             "idle_and_check_ammo",
         }
+
+
+class TestExpectations:
+    def test_fire_expectation_met_returns_no_anomaly(self):
+        assert TestActions.check_expectation("fire_and_check_ammo", {"delta": 1}) is None
+
+    def test_fire_expectation_violated_returns_anomaly(self):
+        anomaly = TestActions.check_expectation("fire_and_check_ammo", {"delta": 0})
+        assert anomaly is not None
+        assert anomaly["action"] == "fire_and_check_ammo"
+        assert "decrease" in anomaly["expected"]
+        assert anomaly["result"]["delta"] == 0
+
+    def test_idle_expectation_met_when_unchanged(self):
+        assert TestActions.check_expectation("idle_and_check_ammo", {"delta": 0}) is None
+
+    def test_idle_expectation_violated_when_ammo_drops(self):
+        anomaly = TestActions.check_expectation("idle_and_check_ammo", {"delta": 1})
+        assert anomaly is not None
+        assert anomaly["action"] == "idle_and_check_ammo"
+
+    def test_unknown_template_has_no_expectation(self):
+        assert TestActions.check_expectation("nuke_everything", {"delta": 99}) is None
+
+    def test_none_delta_does_not_crash(self):
+        # a perception failure can produce delta None -> treated as violation, no crash
+        anomaly = TestActions.check_expectation("fire_and_check_ammo", {"delta": None})
+        assert anomaly is not None
