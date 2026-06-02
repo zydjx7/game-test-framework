@@ -171,14 +171,21 @@
   - Does NOT touch run_agent_loop (Phase 2 while-loop stays the no-reflection baseline). The graph version (Stage C) will call check_expectation in its "check" node to route violations to reflect.
   - tests/test_actions.py +6 (met/violated for both templates, unknown template -> no expectation, delta=None -> anomaly without crash). Full suite 86 passed, 4 legacy deselected.
 
+- [Claude] 2026-06-02 feat: Phase 3 Stage B — reflection (3-type classify + recovery table)
+  - agent/reflection.py: FailureType (PERCEPTION/EXECUTION/LOGIC), RECOVERY table (perception->re_observe, execution->retry, logic->report), ReflectionCase (RAG-ready dataclass with to_dict + recovered slot), Reflector.reflect(anomaly, history) -> ReflectionCase via DeepSeek function calling. LLM only CLASSIFIES (+confidence+reasoning); recovery is table lookup (research-plan §5.3). Reflector diagnoses only; executing recovery is Stage C's graph.
+  - Doc/phase3-design.md §4.5 added: short-term (history) vs long-term (RAG case library) memory; ReflectionCase is built RAG-ready now so W4 adds retrieval, not a rewrite. Same case log reused as RAG source + eval dataset + thesis case studies.
+  - REAL-API FINDING: deepseek-v4-flash runs in "thinking mode" which 400s on a forced tool_choice ({"type":"function",...}). Switched to tool_choice="auto" (proven by the decider) + single tool + explicit instruction. Do NOT use forced tool_choice with this model.
+  - tests/test_reflection.py (7, FakeClient, no API). Full suite 93 passed, 4 legacy deselected.
+  - LIVE smoke (real DeepSeek): first failure no-history -> EXECUTION/retry (conf 0.6); same anomaly after 2 failed retries in history -> LOGIC/report (conf 0.95). Reflection genuinely uses history and is conservative about "logic" -- direct evidence for the low-false-positive design.
+
 ## Current In Progress
 
-- Phase 3 Stage A done (anomaly-detection hook in place). Phase 2 baseline untouched.
+- Phase 3 Stage B done (reflection brain works live). Stages A+B give the sensor (anomaly) + brain (classify+recovery).
 
 ## Next Task
 
-- Phase 3 Stage B: agent/reflection.py — given an anomaly dict + history, an LLM classifies it into PERCEPTION/EXECUTION/LOGIC and proposes a recovery; dispatch table maps each type to a v1 recovery (re-observe / retry / report). Tests use a fake LLM (no API).
-- Then Stage C: agent/graph.py (LangGraph) wiring decide/act/check/reflect/recover nodes, reusing Stage A check_expectation + Stage B reflection.
+- Phase 3 Stage C: agent/graph.py (LangGraph StateGraph) wiring decide -> act -> check (check_expectation) -> reflect (Reflector) -> recover (re_observe/retry/report) nodes. Reuses Stage A + B; keeps Phase 2 run_agent_loop as the no-reflection baseline.
+- Then Stage D (failure injection wrappers) + Stage E (eval: baseline while vs proposed graph).
 
 ## Next Task
 
