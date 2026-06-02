@@ -166,14 +166,19 @@
   - scripts/smoke_langgraph.py: minimal 3-node StateGraph with a CONDITIONAL edge (router sends value>0 to one branch, else the other). Confirms the exact API agent/graph.py will use in Stage C: `from langgraph.graph import StateGraph, START, END`, add_node(plain fn), add_conditional_edges, compile, invoke. Nodes are plain functions -- no LangChain LLM wrappers.
   - Verified: smoke prints positive(5)/nonpositive(-3); full suite still 80 passed, 4 legacy deselected (new dep does not break collection).
 
+- [Claude] 2026-06-02 feat: Phase 3 Stage A — per-step expected effect + anomaly detection
+  - actions/composites.py: TestActions.EXPECTATIONS maps each template to {describe, check}: fire expects delta>=1, idle expects delta==0. TestActions.check_expectation(name, result) returns None if met (or no expectation) else an anomaly dict {action, expected, result} for the reflection layer to consume.
+  - Does NOT touch run_agent_loop (Phase 2 while-loop stays the no-reflection baseline). The graph version (Stage C) will call check_expectation in its "check" node to route violations to reflect.
+  - tests/test_actions.py +6 (met/violated for both templates, unknown template -> no expectation, delta=None -> anomaly without crash). Full suite 86 passed, 4 legacy deselected.
+
 ## Current In Progress
 
-- None. Phase 3 Stage 0 done (LangGraph verified). Phase 2 v1 complete.
+- Phase 3 Stage A done (anomaly-detection hook in place). Phase 2 baseline untouched.
 
 ## Next Task
 
-- Phase 3 Stage A: add a per-step EXPECTED EFFECT (e.g. fire_and_check_ammo expects delta>=1) + anomaly detection, usable by both the while baseline and the future graph version. This is the hook that routes a violated expectation to reflection. No API key needed.
-- Then Stage B: agent/reflection.py (classify anomaly into PERCEPTION/EXECUTION/LOGIC + recovery dispatch).
+- Phase 3 Stage B: agent/reflection.py — given an anomaly dict + history, an LLM classifies it into PERCEPTION/EXECUTION/LOGIC and proposes a recovery; dispatch table maps each type to a v1 recovery (re-observe / retry / report). Tests use a fake LLM (no API).
+- Then Stage C: agent/graph.py (LangGraph) wiring decide/act/check/reflect/recover nodes, reusing Stage A check_expectation + Stage B reflection.
 
 ## Next Task
 
