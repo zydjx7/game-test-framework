@@ -155,9 +155,15 @@
   - Keep Phase 2 run_agent_loop (while, no reflection) UNCHANGED -> it is the natural no-reflection baseline for eval (baseline while vs proposed graph). No duplicate work, no forced rewrite.
   - Risk control: Phase 3 Stage 0 verifies langgraph installs + a 3-node toy graph runs without LangChain BEFORE business logic; fallback is while+if/else (same behaviour, minus the LangGraph keyword). June safety net unchanged (freeze + package if it slips past ~June 14).
 
+- [Claude] 2026-06-02 note: dual-route job strategy (apply to BOTH Route 2 and Route 3)
+  - User prefers Route 2 (Agent Engineer) but the project is rooted in Route 3 (AI Testing); will apply to both. Feasible because the skills overlap heavily -> ONE project, two framings (not two projects). Testing is the application domain; the Agent architecture (Tool Use / Reflection / LangGraph / eval) is the transferable skill.
+  - Consequence for the plan: W4 stretch PRIORITY = RAG (case-based reflection: store past failure cases in a vector store, retrieve similar ones during reflection). It fills Route 2's biggest gaps (RAG + Memory) in one move and is a natural extension of reflection, not a forced add. The 2-bug mutation teaser drops below it.
+  - README must be route-neutral-but-complete: architecture diagram labels BOTH the Agent layer (Planning/Tool Use/Reflection/LangGraph) AND the testing capabilities (BDD/VLM/bug detection) so both kinds of interviewer find their keywords.
+  - Do NOT build extra modules to please both routes; the skeleton already spans both. Core remains: finish Phase 3 + package well.
+
 ## Current In Progress
 
-- None. Phase 2 v1 complete. Phase 3 plan updated (Doc/phase3-design.md) to use LangGraph for the reflection control flow.
+- None. Phase 2 v1 complete. Phase 3 plan updated (Doc/phase3-design.md) to use LangGraph for the reflection control flow. Dual-route job strategy noted; W4 stretch prioritises RAG.
 
 ## Next Task
 
