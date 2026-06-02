@@ -178,14 +178,19 @@
   - tests/test_reflection.py (7, FakeClient, no API). Full suite 93 passed, 4 legacy deselected.
   - LIVE smoke (real DeepSeek): first failure no-history -> EXECUTION/retry (conf 0.6); same anomaly after 2 failed retries in history -> LOGIC/report (conf 0.95). Reflection genuinely uses history and is conservative about "logic" -- direct evidence for the low-false-positive design.
 
+- [Claude] 2026-06-02 feat: Phase 3 Stage C — reflective agent as a LangGraph StateGraph
+  - agent/graph.py: build_reflective_app / run_reflective_agent. Nodes (decide/act/reflect/redo/report/mark_success/mark_maxsteps) are plain functions reusing FunctionCallingDecider + TestActions.run/check_expectation + Reflector; deps captured by closure, AgentState carries only data. Conditional edges: route_after_act (success/maxsteps/reflect/continue) and route_recovery (redo for re_observe+retry, report for logic). Goal judged on the cumulative result, same as the while loop, so the two are comparable. recovery_attempts capped by max_recoveries (no infinite loop). Phase 2 run_agent_loop left untouched as the no-reflection baseline.
+  - tests/test_graph.py (5, ScriptedActionLib + FakeDecider + FakeReflector, no API/ViZDoom): clean fire/idle -> success (0 cases); execution failure -> reflect -> redo -> recovered=True -> success; logic failure -> bug_reported (not retried); recovery capped -> max_steps. Full suite 98 passed, 4 legacy deselected.
+  - LIVE smoke (real ViZDoom + real DeepSeek decider+reflector): 3/3 goals via the reflective graph, 0 cases (clean runs, no anomalies) -- proves the LangGraph wiring runs end-to-end with all real components. Reflection branches are unit-tested; Stage D will trigger them live via injected failures.
+
 ## Current In Progress
 
-- Phase 3 Stage B done (reflection brain works live). Stages A+B give the sensor (anomaly) + brain (classify+recovery).
+- Phase 3 Stages A+B+C done: anomaly sensor + reflection brain + LangGraph orchestration, all green + live-smoked.
 
 ## Next Task
 
-- Phase 3 Stage C: agent/graph.py (LangGraph StateGraph) wiring decide -> act -> check (check_expectation) -> reflect (Reflector) -> recover (re_observe/retry/report) nodes. Reuses Stage A + B; keeps Phase 2 run_agent_loop as the no-reflection baseline.
-- Then Stage D (failure injection wrappers) + Stage E (eval: baseline while vs proposed graph).
+- Phase 3 Stage D: failure-injection wrappers (perception perturb / execution skip) in test/experiment wrappers only, to trigger reflection deterministically on the real stack.
+- Then Stage E: experiments/eval_reflection.py comparing baseline (Phase 2 while loop, no reflection) vs proposed (reflective graph) -> recovery rate + false-positive metrics table.
 
 ## Next Task
 
