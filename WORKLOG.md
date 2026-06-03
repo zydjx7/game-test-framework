@@ -188,14 +188,18 @@
   - research-plan §5 + phase3-design §6 metrics made HONEST: report Goal success (baseline while vs proposed graph) + recovery rate + logic-escalation accuracy/误判率; explicitly DO NOT claim high perception-vs-execution classification accuracy (same observable, classified before recovery). Real logic bugs deferred to Phase 4; v1 approximates with a persistent injected failure.
   - Doc/v2-roadmap.md NEW: portability ladder (framework -> MCP interface -> RAG-B knowledge -> multi-agent scale). MCP = wrap the game as an MCP server so swapping games = swapping servers. RAG-B = knowledge-driven test generation (store FPS test knowledge, not just failure cases). ALL July+ / future work; June guardrail = only keep interfaces decoupled + cases RAG-ready (both already true).
 
+- [Claude] 2026-06-02 feat: Phase 3 Stage D — controlled failure injection
+  - experiments/inject.py (experiment layer, production untouched): PerceptionFailureInjector wraps a perceptor and MASKS the first N ammo changes (reports the stale value -> delta looks 0 though the game changed); ExecutionFailureInjector wraps primitives so the first N fire_once become no-op waits (ammo unchanged). A large fail_fires gives a persistent LOGIC-like failure. Deterministic (fixed counts, no RNG).
+  - tests/test_inject.py (6, fakes, no ViZDoom). Full suite 104 passed, 4 legacy deselected.
+  - LIVE smoke (real ViZDoom + real DeepSeek reflector): perception-injected -> success (recovered); execution-injected -> success (recovered); persistent -> bug_reported (execution redo failed -> escalated to LOGIC). CONFIRMS LIVE: (1) reflection triggers + recovers on injected failures; (2) observational equivalence -- the perception injection was classified EXECUTION yet still recovered (same redo), the live evidence for not claiming perception-vs-execution accuracy; (3) conservative logic escalation -- only after a retry kept failing.
+
 ## Current In Progress
 
-- Phase 3 Stages A+B+C done. Docs precised (claim + honest metrics + v2 roadmap). Resuming Stage D next.
+- Phase 3 Stage D done (injection + live reflection confirmed). A+B+C+D complete.
 
 ## Next Task
 
-- Phase 3 Stage D: failure-injection wrappers (perception perturb / execution skip) in experiments/inject.py (test/experiment only, NOT production), to trigger reflection deterministically on the real stack.
-- Then Stage E: experiments/eval_reflection.py comparing baseline (while) vs proposed (graph) -> the honest metrics table (phase3-design §6).
+- Phase 3 Stage E: experiments/eval_reflection.py — run N injected-failure episodes for each type, baseline (run_agent_loop, no reflection) vs proposed (run_reflective_agent), tabulate the honest metrics (phase3-design §6): goal success, recovery rate, logic-escalation accuracy. Write CSV + Doc/phase3-reflection-report.md.
 
 ## Next Task
 
