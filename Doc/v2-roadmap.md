@@ -1,73 +1,96 @@
-# v2 Roadmap — Portability & Extensions (NOT June)
+# Reusability Roadmap — make the framework usable on OTHER FPS games
 
-> **Status**: 2026-06-02 captured for direction. **None of this is June work.**
-> June = finish Phase 3 (Stage D/E) + packaging. Everything here is July+ /
-> project v2 / thesis future work. Recorded so we (a) don't forget, (b) have a
-> clean "future work" narrative for the thesis and interviews, (c) keep current
-> architecture decisions from blocking these later.
+> **Status**: 2026-06-03. Reusability/portability is now a PRIMARY line of the
+> project (not a "future-work footnote"), because the project's value claim is
+> "a reusable agent-based FPS testing framework", and that is also what makes it
+> a strong internship portfolio. The thesis-grade comparisons come last.
+> **Sequence locked (2026-06-03)**: foundation (contract + ToyGame) BEFORE MCP.
+> MCP standardises a contract that must first be clear; it is not step one.
 
-## Goal
+## Why this is the main line, not a footnote
 
-Make it easy for OTHER FPS games to use this framework. Today's portability:
-the agent layer (goal-level Gherkin, function-calling decide, reflection,
-LangGraph orchestration, eval) is reusable as-is; only the adapter layer
-(perception + action implementations) is rewritten per game. v2 raises that.
+Today the AGENT layer (goal-level Gherkin, function-calling decide, reflection,
+LangGraph orchestration, eval) is reusable as-is; only the ADAPTER layer
+(env + perception + action) is per-game. That is "architecturally portable".
+But it is not yet DEMONSTRATED portable, and the adapter contract is not yet
+explicit. Raising this is the project's core maturity work.
 
-## Portability ladder (the future-work narrative)
+## Reusability ladder (each rung enables the next)
 
 ```
-1. Framework portable   (DONE) agent layer unchanged; swap the adapter layer
-2. Interface standardised (MCP) adapter becomes a standard MCP server; swap game = swap server
-3. Knowledge portable   (RAG-B) FPS test knowledge as a retrievable library; new game reuses "what to test"
-4. Scale                (multi-agent) coordinator + parallel test agents + judge/reporter
+① Adapter contract explicit (ABC + docs)   cheapest; you already have GameStatePerceptor
+② Second reference impl (ToyGame adapter)   proves "swap game, agent unchanged" — the killer demo
+③ MCP — protocol-ise the contract           swap game = implement an MCP server
+④ RAG-B — portable TEST KNOWLEDGE            new game reuses "what to test" (the crown)
+   (Phase 4 mutation + rigorous comparison is the thesis track, separate)
 ```
 
-## 1. MCP — standardise the game interface
+MCP is rung ③: it standardises a contract that ① must first make clear. RAG-B is
+the crown (④) and needs ①②③ as foundation — knowledge-generated goals only land
+if there is a clear adapter contract and a rich action library to map onto.
 
-Wrap "game interaction" as an **MCP server** (Model Context Protocol, a standard
-protocol for agents to call external tools/data):
-- tools: `fire()`, `turn(dir)`, `observe()`, `reset()`
-- resources: `screen` (frame), `game_variables` (ground truth)
+## Stage 1 (June) — Foundation: reusable contract + maturity + packaging
 
-The agent becomes an MCP client and calls abstract tools instead of
-`import VizDoomEnv`. **Swap game = write a new game MCP server (e.g. an
-UnrealFPS server) exposing the same tools; the agent layer does not change.**
-Honest note: the existing GameStatePerceptor / VizDoomEnv abstractions already
-decouple the game; MCP upgrades that decoupling to a cross-process standard
-protocol (value = standardisation + ecosystem + résumé keyword), it is not the
-decoupling from scratch.
+This is three-in-one: maturity AND demonstrated portability AND good packaging.
 
-## 2. Multi-agent — orchestration with LangGraph
+- **1a. Make the adapter contract explicit.** perception already has the
+  `GameStatePerceptor` ABC. Add the missing contracts for the env and action
+  layers (an `EnvAdapter`-style interface: `reset()/step()/screen()/game_vars()`,
+  and the primitives/composites shape), and document "how to plug in a new game".
+- **1b. Extend the action library by 2-3 mechanic dimensions** (health,
+  ammo-bounds, death) — maturity, and richer failures for reflection. Verify
+  first which game variables the scenario exposes (Phase 1/2 lesson).
+- **1c. ToyGame second reference implementation** — a ~100-line pure-Python fake
+  FPS (state machine: ammo/health) implementing the SAME contracts. Then
+  `run_reflective_agent(goal, toy_lib, toy_perceptor, decider, reflector)` runs
+  with the agent/loop, agent/graph, reflection layers UNCHANGED. This turns
+  "architecturally portable" into "demonstrated portable", and doubles as a
+  fast, ViZDoom-free test fixture. Writing it is also what forces ① to be clean.
+- **1d. Packaging.** README (EN or bilingual; FIX the file encoding so GitHub
+  renders it — Codex reports it currently shows as garbled), an architecture
+  diagram, a "plug in a new game" section, a demo GIF, three run commands.
 
-LangGraph (already used for the single reflective agent) also orchestrates
-multiple agents as nodes/subgraphs:
-- Coordinator agent → assigns a batch of goals to test agents
-- Test agents (each = today's reflective graph) → test different mechanics in parallel
-- Judge agent → aggregates, decides which are real bugs (Phase 4 LLM Oracle is naturally Judge + Reporter)
-- Reporter agent → bug reports
+**Stage 1 deliverable**: explicit contract + TWO game implementations (ViZDoom +
+ToyGame) + richer actions + a clean README = genuinely reusable AND presentable.
 
-Value: scale (industry-size test suites), Judge independent of Actor (more
-trustworthy). Caveat: only when parallelism/separation has real value — avoid
-multi-agent for its own sake.
+## Stage 2 (late June / July) — MCP: protocol-ise the interface
 
-## 3. RAG — two distinct uses
+Expose the Stage-1 adapter contract as an **MCP server** (Model Context
+Protocol; server exposes tools `fire()/observe()/reset()` + resources
+`screen`/`game_variables`; the agent is an MCP client). Swap game = implement an
+MCP server, no agent change. This is the protocol-isation of rung ①, the
+cross-process/standardised upgrade. Résumé value: MCP is a current standard.
 
-- **RAG-A: case-based reflection** (W4 stretch, simpler): store past FAILURE
-  cases; retrieve similar ones during reflection. Cross-episode experience.
-  ReflectionCase is already RAG-ready (phase3-design §4.5).
-- **RAG-B: knowledge-driven test generation** (bigger, future): store FPS
-  general TEST KNOWLEDGE (not failure cases) — e.g. `{mechanic: "ammo
-  consumption", goal: "firing should decrease ammo", common bug: "not
-  decremented / negative", how: "fire and check delta"}`. A new game's agent
-  retrieves "what FPS games usually test" → auto-generates goals → adapts to the
-  new game's actions/perception. This lifts portability from "framework
-  reusable" to "test KNOWLEDGE reusable" — potentially a standalone thesis
-  contribution. Difficulty: knowledge must be seeded/accumulated (cold start),
-  and mapping generic knowledge to a specific game's variables still needs
-  domain adaptation.
+## Stage 3 (July-Aug) — RAG: knowledge that ports
 
-## June guardrail
+- **RAG-A (smaller)**: case-based reflection — store past FAILURE cases, retrieve
+  similar ones during reflection. ReflectionCase is already RAG-ready
+  (phase3-design §4.5).
+- **RAG-B (the crown)**: knowledge-driven test generation — store FPS general
+  TEST KNOWLEDGE, e.g. `{mechanic: "ammo consumption", goal: "firing should
+  decrease ammo", common bug: "not decremented / negative", how: "fire and check
+  delta"}`. A new game's agent retrieves "what FPS games usually test" →
+  auto-generates goals → adapts to its actions/perception. Lifts portability from
+  "framework reusable" to "test KNOWLEDGE reusable" — a potential standalone
+  thesis contribution. Needs the Stage-1 contract + action library to land.
 
-Do NOT start any of this in June. The only thing to do NOW is keep the current
-architecture from blocking it: keep the perception/action interfaces decoupled
-(already true) and keep reflection cases RAG-ready (already true). That's it.
+## Multi-agent (later) — orchestration with LangGraph
+
+LangGraph already runs the single reflective agent; it also orchestrates many:
+Coordinator → parallel Test agents → Judge (Phase 4 LLM Oracle = Judge+Reporter)
+→ Reporter. Value: scale, Judge independent of Actor. Only when parallelism has
+real value — not for its own sake.
+
+## Thesis track (last) — Phase 4 + rigorous comparison
+
+Separate from the reusability line: Phase 4 real mutation bugs + the rigorous
+comparisons (vs hardcoded BDD baseline, vs rule-based reflection baseline). These
+need the mature action library + richer failure space to be convincing, so they
+come AFTER Stage 1 maturity. Do them when the "experiment bench" is mature, not
+on the fire/idle prototype.
+
+## Guardrail
+
+Stage 1 is the June focus. Don't jump to MCP/RAG before the contract is explicit
+and ToyGame proves portability. Keep interfaces decoupled and reflection cases
+RAG-ready (both already true) so nothing here is blocked.

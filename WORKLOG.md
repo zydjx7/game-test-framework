@@ -199,14 +199,20 @@
   - Research point: reflection's value is DIAGNOSIS + detecting non-recoverable (logic) faults the baseline silently ignores -- NOT recovering faults brute-force already handles. Detection-rate proxy for Claim 1; sets up Phase 4 real mutations. 3/5 (not 5/5) reported honestly (LLM escalation is probabilistic within max_recoveries). perception-vs-execution not distinguished by design (observational equivalence).
   - Doc/phase3-reflection-report.md written. Phase 3 core (Stages 0,A-E) COMPLETE.
 
+- [Claude] 2026-06-03 shared: reusability is now a PRIMARY line; sequence locked
+  - Strategy shift (agreed with user + Codex review): the project's core value is "a reusable agent-based FPS testing framework", which is also the strongest internship story. So portability is a main line, not a future-work footnote. The thesis-grade comparisons come last.
+  - Doc/v2-roadmap.md rewritten into a Reusability Roadmap with a LOCKED sequence: foundation (explicit adapter contract + ToyGame second implementation) BEFORE MCP. MCP (rung ③) standardises a contract that rung ① must first make clear; RAG-B (rung ④, knowledge-driven test generation) is the crown needing the foundation.
+  - IMPORTANT conceptual corrections recorded: (1) Stage E baseline-vs-proposed is an ABLATION (reflection on/off), NOT the Claim 1 main comparison (LLM agent vs hardcoded BDD + mutation detection) — that is Phase 4. LangGraph is just reflection's implementation, not the comparison's essence. (2) Under the simple fire/idle mechanic, a rule-based baseline could match proposed; the necessity of LLM reflection is NOT yet forced out — it needs richer, multi-state, multi-cause failures. So do NOT run rigorous comparisons on the immature fire/idle bench.
+
 ## Current In Progress
 
-- None. Phase 3 core complete (reflection: classify + recover + LangGraph + injection + eval). Phases 0-3 done.
+- Phase 0-3 core done. Strategy: reusability as main line; June = foundation (contract + ToyGame) + maturity (2-3 mechanics) + packaging.
 
 ## Next Task
 
-- JUNE PRIORITY = PACKAGING (per dual-route job plan): README + architecture diagram + demo GIF + Phase 1/3 metric tables + repo cleanup, so the GitHub project is presentable for internships. Route-neutral-but-complete (label both Agent layer and testing capabilities).
-- Phase 4 (mutation + LLM oracle) and v2 extensions (MCP/multi-agent/RAG) are July+.
+- June Stage 1 (Doc/v2-roadmap.md): 1a explicit adapter contract (env/action ABCs + "plug a new game" doc), 1b extend action library 2-3 mechanics (verify scenario game_variables first), 1c ToyGame ~100-line second reference impl (proves agent layer unchanged across games; also a fast test fixture), 1d README (FIX encoding so GitHub renders) + architecture diagram + demo.
+- Recommended entry point: 1c ToyGame first — building the second implementation is what forces the adapter contract (1a) to be clean, and it is the killer portability demo.
+- LATER: MCP (Stage 2), RAG-A/B (Stage 3), multi-agent, Phase 4 mutation + rigorous baselines (thesis track).
 
 ## Next Task
 
