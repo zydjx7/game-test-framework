@@ -193,13 +193,20 @@
   - tests/test_inject.py (6, fakes, no ViZDoom). Full suite 104 passed, 4 legacy deselected.
   - LIVE smoke (real ViZDoom + real DeepSeek reflector): perception-injected -> success (recovered); execution-injected -> success (recovered); persistent -> bug_reported (execution redo failed -> escalated to LOGIC). CONFIRMS LIVE: (1) reflection triggers + recovers on injected failures; (2) observational equivalence -- the perception injection was classified EXECUTION yet still recovered (same redo), the live evidence for not claiming perception-vs-execution accuracy; (3) conservative logic escalation -- only after a retry kept failing.
 
+- [Claude] 2026-06-03 feat: Phase 3 Stage E — reflection eval (baseline vs proposed)
+  - experiments/eval_reflection.py: fixed decider (reflection under test, not decision) + real DeepSeek reflector; baseline run_agent_loop vs proposed run_reflective_agent under injected failures; CSV + summary. 5 runs/condition.
+  - RESULTS (honest): one-shot perception/execution -> baseline AND proposed both succeed 5/5 in 2.0 steps (cumulative goal lets baseline brute-force; reflection recovers 5/5 but adds no success/efficiency win there). PERSISTENT (logic-like) -> baseline 0/5 (silent timeout, 6.0 steps, bug MISSED) vs proposed bug_reported 3/5 (3.6 steps, bug DETECTED).
+  - Research point: reflection's value is DIAGNOSIS + detecting non-recoverable (logic) faults the baseline silently ignores -- NOT recovering faults brute-force already handles. Detection-rate proxy for Claim 1; sets up Phase 4 real mutations. 3/5 (not 5/5) reported honestly (LLM escalation is probabilistic within max_recoveries). perception-vs-execution not distinguished by design (observational equivalence).
+  - Doc/phase3-reflection-report.md written. Phase 3 core (Stages 0,A-E) COMPLETE.
+
 ## Current In Progress
 
-- Phase 3 Stage D done (injection + live reflection confirmed). A+B+C+D complete.
+- None. Phase 3 core complete (reflection: classify + recover + LangGraph + injection + eval). Phases 0-3 done.
 
 ## Next Task
 
-- Phase 3 Stage E: experiments/eval_reflection.py — run N injected-failure episodes for each type, baseline (run_agent_loop, no reflection) vs proposed (run_reflective_agent), tabulate the honest metrics (phase3-design §6): goal success, recovery rate, logic-escalation accuracy. Write CSV + Doc/phase3-reflection-report.md.
+- JUNE PRIORITY = PACKAGING (per dual-route job plan): README + architecture diagram + demo GIF + Phase 1/3 metric tables + repo cleanup, so the GitHub project is presentable for internships. Route-neutral-but-complete (label both Agent layer and testing capabilities).
+- Phase 4 (mutation + LLM oracle) and v2 extensions (MCP/multi-agent/RAG) are July+.
 
 ## Next Task
 
