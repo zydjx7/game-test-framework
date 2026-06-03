@@ -157,20 +157,36 @@ To exercise reflection deterministically:
 
 Injection lives in test/experiment wrappers, NOT in production classes.
 
-## 6. Evaluation (this is the résumé-grade metrics table)
+## 6. Evaluation — HONEST metrics (2026-06-02 revised)
 
-`experiments/eval_reflection.py`, over N injected-failure runs:
+**Key design realisation**: a PERCEPTION failure and an EXECUTION failure
+produce the SAME observable (fire → delta=0). Reflection classifies BEFORE
+recovery, so from a single anomaly it cannot reliably tell "misread" from
+"didn't execute". Therefore we do NOT claim a high perception-vs-execution
+classification accuracy (that would be fake). Two facts save the design:
+1. their recovery strategy is the same in v1 (redo once), so not distinguishing
+   them does not hurt the recovery rate;
+2. the reliably-distinguishable and most valuable boundary is **logic vs
+   non-logic** (logic is evidenced by "already retried and still failing" in the
+   history — confirmed by the Stage B live smoke: 2 failed retries → logic 0.95).
+
+So `experiments/eval_reflection.py`, over N injected-failure runs, reports:
 
 | Metric | Meaning |
 |---|---|
-| recovery rate (perception) | fraction of injected perception failures the agent recovers from |
-| recovery rate (execution) | same for execution |
-| **false-positive rate** | fraction where a real (logic) failure is mis-classified as perception/execution and "reflected away" — 误判分析 |
-| avg retries | cost of reflection |
-| baseline vs proposed | no-reflection (stop on first failure) vs reflection+retry |
+| **Goal success rate** (baseline vs proposed) | no-reflection while loop vs reflective graph, under injected failure — the core "reflection helps" delta |
+| **Recovery rate** | injected one-shot perception/execution failure: fraction the reflect→redo round recovers |
+| **Logic-escalation accuracy / 误判率** | injected PERSISTENT failure: fraction reflection correctly escalates to logic (stops retrying, does not miss the "bug"); and the inverse (one-shot failure wrongly called logic = false alarm) |
+| avg recovery rounds | cost of reflection |
 
-Targets (research-plan §5): perception recovery ≥ 70%, execution ≥ 80%,
-logic-not-misclassified precision ≥ 80%.
+**Honest scope** (threats to validity, write it in the paper):
+- perception vs execution NOT strongly distinguished (same observable + same
+  recovery); distinguishing them needs a re-observe-then-compare signal → future work.
+- real logic bugs (mutation) deferred to Phase 4; v1 approximates with a
+  persistent injected failure ("retries keep failing → should be logic").
+
+Targets: proposed goal success >> baseline; perception/execution recovery
+≥ 70-80%; logic-escalation accuracy high (≥ ~80%) with low false alarms.
 
 ## 7. Success criteria (Phase 3 v1 done)
 

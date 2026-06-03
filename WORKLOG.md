@@ -183,14 +183,19 @@
   - tests/test_graph.py (5, ScriptedActionLib + FakeDecider + FakeReflector, no API/ViZDoom): clean fire/idle -> success (0 cases); execution failure -> reflect -> redo -> recovered=True -> success; logic failure -> bug_reported (not retried); recovery capped -> max_steps. Full suite 98 passed, 4 legacy deselected.
   - LIVE smoke (real ViZDoom + real DeepSeek decider+reflector): 3/3 goals via the reflective graph, 0 cases (clean runs, no anomalies) -- proves the LangGraph wiring runs end-to-end with all real components. Reflection branches are unit-tested; Stage D will trigger them live via injected failures.
 
+- [Claude] 2026-06-02 shared: precision pass on claim + Phase 3 metrics + v2 roadmap
+  - research-plan §0 Research Claim PRECISED: (1) mutation testing is an EVALUATION METHOD (controlled ground-truth bugs), NOT the contribution -- contribution is the agent test system; do not say "we do mutation testing research". (2) the 3 failure types are LAYERED: logic-vs-non-logic is the core boundary (decides whether to report a bug); perception-vs-execution is future work because they share an observable + recovery strategy.
+  - research-plan §5 + phase3-design §6 metrics made HONEST: report Goal success (baseline while vs proposed graph) + recovery rate + logic-escalation accuracy/误判率; explicitly DO NOT claim high perception-vs-execution classification accuracy (same observable, classified before recovery). Real logic bugs deferred to Phase 4; v1 approximates with a persistent injected failure.
+  - Doc/v2-roadmap.md NEW: portability ladder (framework -> MCP interface -> RAG-B knowledge -> multi-agent scale). MCP = wrap the game as an MCP server so swapping games = swapping servers. RAG-B = knowledge-driven test generation (store FPS test knowledge, not just failure cases). ALL July+ / future work; June guardrail = only keep interfaces decoupled + cases RAG-ready (both already true).
+
 ## Current In Progress
 
-- Phase 3 Stages A+B+C done: anomaly sensor + reflection brain + LangGraph orchestration, all green + live-smoked.
+- Phase 3 Stages A+B+C done. Docs precised (claim + honest metrics + v2 roadmap). Resuming Stage D next.
 
 ## Next Task
 
-- Phase 3 Stage D: failure-injection wrappers (perception perturb / execution skip) in test/experiment wrappers only, to trigger reflection deterministically on the real stack.
-- Then Stage E: experiments/eval_reflection.py comparing baseline (Phase 2 while loop, no reflection) vs proposed (reflective graph) -> recovery rate + false-positive metrics table.
+- Phase 3 Stage D: failure-injection wrappers (perception perturb / execution skip) in experiments/inject.py (test/experiment only, NOT production), to trigger reflection deterministically on the real stack.
+- Then Stage E: experiments/eval_reflection.py comparing baseline (while) vs proposed (graph) -> the honest metrics table (phase3-design §6).
 
 ## Next Task
 

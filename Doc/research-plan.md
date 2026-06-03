@@ -41,19 +41,24 @@ LLM Agent + Mutation Testing + 多类型 Failure Recovery
 跟 RiverGame 的差异：RiverGame 静态规约，你动态 agent loop。
 跟 SIMA/Voyager 的差异：它们关心任务完成，你关心 bug detection。
 
-### Research Claim（2026-05-20 定稿，必须可证伪）
+### Research Claim（2026-06-02 精确化，必须可证伪）
 
-> **在 FPS 游戏 bug 检测任务上，"LLM Agent + Goal-level BDD" 范式相比传统"硬编码 BDD 断言"，能检测更多 mutation-injected bug，且系统失败模式可被分类为 perception / execution / logic 三类。**
+> **我们用 mutation-injected bug 作为受控评估基准，证明在 FPS 游戏 bug 检测任务上，"LLM Agent + Goal-level BDD" 范式相比传统"硬编码 BDD 断言"能检测出更多游戏 bug；且失败可归因为 agent 自身（perception / execution）与游戏本身（logic）。**
+
+**两个易被审稿人攻击的概念澄清（2026-06-02）**：
+
+1. **mutation testing 是评估方法，不是本研究的贡献**。经典 mutation testing 评估的是"测试套件质量"。这里：被测物 = 游戏（ACS 逻辑），变异 = 注入游戏 bug，评估对象 = **我们的 agent 测试系统**（它扮演"测试器"角色）。mutation 提供一组已知、可控的 bug 作为 ground truth，让 detection rate 可算。**贡献 = agent 测试系统；mutation = 证明其有效的受控基准。** 不要表述成"我们做 mutation testing 研究"。
+2. **三类失败是分层的，logic 边界才是核心**。一级区分（核心）= `agent 自身的错（perception+execution）` vs `游戏的 bug（logic）`，决定"要不要报 bug"（误报/漏报）。二级区分（perception vs execution）是细化，但二者**现象相同**（均表现为预期未达成），单次异常难可靠区分，且 v1 恢复策略一致（重做一次），故 v1 不强区分——诚实写进 threats-to-validity。
 
 拆解（empirical study 三件套）：
 
 | 层 | 内容 |
 |---|---|
-| **Claim 1（主）** | `detection_rate(LLM Agent system) > detection_rate(hardcoded BDD baseline)` |
-| **Claim 2（次）** | Agent 失败模式可分类为 perception / execution / logic 三类，且每类有可观察特征 + 可设计的恢复策略 |
-| **Metric** | (a) per-bug detection rate; (b) false positive rate; (c) failure mode distribution; (d) time-to-detect |
-| **Baseline** | (a) 本科系统（硬编码 step function + 模板匹配） |
-| **消融对照** | (b) full system - reflection; (c) full system - LLM oracle; (d) step-level Gherkin vs goal-level Gherkin |
+| **Claim 1（主）** | `detection_rate(LLM Agent system) > detection_rate(hardcoded BDD baseline)`，在 mutation-injected bug 上测 |
+| **Claim 2（次）** | 失败可归因为 agent 自身（perception/execution）vs 游戏（logic）；**核心是 logic vs 非logic 的判别**（决定是否报 bug），perception/execution 细分为 future work |
+| **Metric** | (a) per-bug detection rate; (b) **false positive / false negative**（误报/漏报 bug）; (c) 恢复率 + logic 升级准确率; (d) time-to-detect |
+| **Baseline** | (a) 本科系统（硬编码 step function + 模板匹配）；(b) full system - reflection（Phase 2 while 版） |
+| **消融对照** | full system - reflection / - LLM oracle / step-level vs goal-level Gherkin |
 
 **Claim 跟职业目标的对齐**（米哈游 / 网易 AI Agent 岗）：
 
@@ -764,9 +769,11 @@ Respond ONLY with JSON: {"hypothesis": ..., "recovery_action": ..., "confidence"
 
 ### 成功标准
 
-- Perception failure 恢复率 ≥ 70%
-- Execution failure 恢复率 ≥ 80%
-- 反思机制不会把真 bug 误判成 perception error（精确率 ≥ 80%）
+（2026-06-02 诚实化 —— 详见 `Doc/phase3-design.md` §6）：
+- **Goal 成功率**：注入失败下，proposed（反思 graph）显著高于 baseline（无反思 while）
+- **恢复率**：注入一次性 perception/execution 失败，反思 + 重做救回的比例（目标 ≥ 70-80%）
+- **Logic 升级准确率 / 误判率**：注入持续失败时，反思正确升级为 logic（不无限重试、不漏报）的比例
+- **诚实声明**：perception 与 execution 现象相同、恢复策略一致，v1 不强区分（写进 threats-to-validity）；真 logic bug（mutation）的误判率留 Phase 4 测，v1 用"持续失败应升级为 logic"近似
 
 ### 这一阶段不要做的事
 
