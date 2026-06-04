@@ -209,14 +209,21 @@
   - Doc/phase3.5-generalization.md written. Target: FLAT per-metric result ({<m>_before,<m>_after}, no delta) + generic cumulative accumulation (first-before/latest-after per metric) + Observation contract (screen OPTIONAL) + de-ammo prompts. Chose FLAT naming over Codex's nested {before,after,metrics} because goal success is an eval over a flat dict AND it keeps the existing ammo goal expressions UNCHANGED (zero edits to goals.feature/goal tests).
   - Adjustments to Codex's plan (agreed with user): rule-based baseline DEFERRED to thesis track (not June); README is a REWRITE not an encoding fix (file is UTF-8 fine; Codex's "garbled" was its terminal encoding; content is stale at "Phase 0.2"). re_observe/retry separation + recovery per-anomaly = Stage 1 step 3, NOT bundled into this refactor.
 
+- [Claude] 2026-06-03 refactor: Phase 3.5 generalization IMPLEMENTED (de-ammo the core)
+  - actions/result.py (NEW): snapshot_result (single construction point enforcing <metric>_before/<metric>_after flat naming — Codex's point, prevents before_ammo/ammoStart drift) + accumulate (generic cumulative: first <m>_before / latest <m>_after + steps/last_action, no hardcoded metric) + summarize_result (generic "ammo 26->25" rendering).
+  - composites.py: fire/idle use snapshot_result (no more `delta` key); EXPECTATIONS use generic _decreased/_unchanged(metric) helpers (None reads -> violation); _read tolerant (screen OPTIONAL via getattr) = the Observation contract for screen-less games.
+  - graph.py + loop.py: cumulative now built by accumulate() (removed the hardcoded ammo_before/ammo_after/first_before/delta blocks). reflection.py + loop.py prompts de-ammo'd (summarize_result; SYSTEM_PROMPT "Doom-like" -> "an FPS game"). goal.py docstrings updated.
+  - goals.feature + goal tests UNCHANGED (flat naming preserved ammo_before/ammo_after). Tests updated where they asserted the removed `delta` key (test_actions, test_agent_loop). Full suite 104 passed, 4 legacy deselected.
+  - Live re-smoke (real ViZDoom + DeepSeek): 3/3 clean goals (cumulative now generic {ammo_before, ammo_after}) + injected-execution still reflects->recovers. Proves ammo behaviour is equivalent while the core no longer hardcodes ammo.
+
 ## Current In Progress
 
-- Phase 3.5 generalization designed (Doc/phase3.5-generalization.md). Next: implement it under the green 104-test suite.
+- Phase 3.5 done: core schema generalized + de-ammo'd, behaviour-equivalent, 104 green. The agent layer is now metric-agnostic.
 
 ## Next Task
 
-- Implement Phase 3.5 per the design note: composites (_snapshot_result + EXPECTATIONS before/after + tolerant _read), graph/loop generic cumulative, de-ammo prompts. Keep ammo behaviour equivalent (goals.feature unchanged; full suite green; re-smoke 3/3 on ViZDoom).
-- Then Stage 1: 1c ToyGame (consumes the generalized schema, agent layer unchanged) -> 1b 2nd mechanic (health/done) -> step 3 reflection semantics -> 1d packaging (README rewrite).
+- Stage 1c: ToyGame ~100-line second reference implementation consuming the generalized schema (ammo + health + score) with the agent layer UNCHANGED — proves portability and exercises the new schema beyond ammo. Also a fast, ViZDoom-free test fixture.
+- Then 1b (2nd ViZDoom mechanic: health/done), step 3 (re_observe/retry split + recovery per-anomaly), 1d (README rewrite + diagram).
 
 ## Next Task
 
