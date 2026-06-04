@@ -204,15 +204,19 @@
   - Doc/v2-roadmap.md rewritten into a Reusability Roadmap with a LOCKED sequence: foundation (explicit adapter contract + ToyGame second implementation) BEFORE MCP. MCP (rung ③) standardises a contract that rung ① must first make clear; RAG-B (rung ④, knowledge-driven test generation) is the crown needing the foundation.
   - IMPORTANT conceptual corrections recorded: (1) Stage E baseline-vs-proposed is an ABLATION (reflection on/off), NOT the Claim 1 main comparison (LLM agent vs hardcoded BDD + mutation detection) — that is Phase 4. LangGraph is just reflection's implementation, not the comparison's essence. (2) Under the simple fire/idle mechanic, a rule-based baseline could match proposed; the necessity of LLM reflection is NOT yet forced out — it needs richer, multi-state, multi-cause failures. So do NOT run rigorous comparisons on the immature fire/idle bench.
 
+- [Claude] 2026-06-03 docs: Phase 3.5 generalization design note (after Codex code review)
+  - Codex reviewed the actual code and found the agent core only understands AMMO: graph.py/loop.py hardcode ammo_before/ammo_after for cumulative; composites return {ammo_before,ammo_after,delta}; _read assumes state.screen exists; reflection/decider prompts say "ammo delta"/"Doom". Agreed: generalize this schema FIRST (test-guarded), BEFORE ToyGame — otherwise ToyGame just disguises as an ammo game.
+  - Doc/phase3.5-generalization.md written. Target: FLAT per-metric result ({<m>_before,<m>_after}, no delta) + generic cumulative accumulation (first-before/latest-after per metric) + Observation contract (screen OPTIONAL) + de-ammo prompts. Chose FLAT naming over Codex's nested {before,after,metrics} because goal success is an eval over a flat dict AND it keeps the existing ammo goal expressions UNCHANGED (zero edits to goals.feature/goal tests).
+  - Adjustments to Codex's plan (agreed with user): rule-based baseline DEFERRED to thesis track (not June); README is a REWRITE not an encoding fix (file is UTF-8 fine; Codex's "garbled" was its terminal encoding; content is stale at "Phase 0.2"). re_observe/retry separation + recovery per-anomaly = Stage 1 step 3, NOT bundled into this refactor.
+
 ## Current In Progress
 
-- Phase 0-3 core done. Strategy: reusability as main line; June = foundation (contract + ToyGame) + maturity (2-3 mechanics) + packaging.
+- Phase 3.5 generalization designed (Doc/phase3.5-generalization.md). Next: implement it under the green 104-test suite.
 
 ## Next Task
 
-- June Stage 1 (Doc/v2-roadmap.md): 1a explicit adapter contract (env/action ABCs + "plug a new game" doc), 1b extend action library 2-3 mechanics (verify scenario game_variables first), 1c ToyGame ~100-line second reference impl (proves agent layer unchanged across games; also a fast test fixture), 1d README (FIX encoding so GitHub renders) + architecture diagram + demo.
-- Recommended entry point: 1c ToyGame first — building the second implementation is what forces the adapter contract (1a) to be clean, and it is the killer portability demo.
-- LATER: MCP (Stage 2), RAG-A/B (Stage 3), multi-agent, Phase 4 mutation + rigorous baselines (thesis track).
+- Implement Phase 3.5 per the design note: composites (_snapshot_result + EXPECTATIONS before/after + tolerant _read), graph/loop generic cumulative, de-ammo prompts. Keep ammo behaviour equivalent (goals.feature unchanged; full suite green; re-smoke 3/3 on ViZDoom).
+- Then Stage 1: 1c ToyGame (consumes the generalized schema, agent layer unchanged) -> 1b 2nd mechanic (health/done) -> step 3 reflection semantics -> 1d packaging (README rewrite).
 
 ## Next Task
 
