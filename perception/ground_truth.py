@@ -72,10 +72,12 @@ class GroundTruthPerceptor(GameStatePerceptor):
         gv: Dict[str, int] = game_variables or {}
         ammo = gv.get("ammo")
         health = gv.get("health")
+        score = gv.get("score")
 
         return GameState(
             ammo=int(ammo) if ammo is not None else None,
             health=int(health) if health is not None else None,
+            score=int(score) if score is not None else None,
             raw_response={"game_variables": dict(gv)},
         )
 

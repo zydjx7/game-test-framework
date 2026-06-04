@@ -14,7 +14,43 @@ eval over the (flat) cumulative dict, e.g. `ammo_before - ammo_after >= 1` or
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping
+
+
+# -- expectation predicates over the canonical schema (reused by any game's
+#    action library, e.g. ViZDoom TestActions and ToyFPS ToyActions) ---------
+
+def decreased(metric: str, by: int = 1) -> Callable[[Dict[str, Any]], bool]:
+    """<metric> dropped by at least `by`. A None read counts as a violation."""
+
+    def check(result: Dict[str, Any]) -> bool:
+        before = result.get(f"{metric}_before")
+        after = result.get(f"{metric}_after")
+        return before is not None and after is not None and (before - after) >= by
+
+    return check
+
+
+def increased(metric: str, by: int = 1) -> Callable[[Dict[str, Any]], bool]:
+    """<metric> rose by at least `by`. A None read counts as a violation."""
+
+    def check(result: Dict[str, Any]) -> bool:
+        before = result.get(f"{metric}_before")
+        after = result.get(f"{metric}_after")
+        return before is not None and after is not None and (after - before) >= by
+
+    return check
+
+
+def unchanged(metric: str) -> Callable[[Dict[str, Any]], bool]:
+    """<metric> is unchanged. A None read counts as a violation."""
+
+    def check(result: Dict[str, Any]) -> bool:
+        before = result.get(f"{metric}_before")
+        after = result.get(f"{metric}_after")
+        return before is not None and after is not None and before == after
+
+    return check
 
 
 def snapshot_result(before: Mapping[str, Any], after: Mapping[str, Any]) -> Dict[str, Any]:

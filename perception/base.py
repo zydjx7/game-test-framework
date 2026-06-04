@@ -62,6 +62,7 @@ class GameState:
     weapon: Optional[str] = None
     crosshair_red: Optional[bool] = None
     enemies_visible: Optional[bool] = None
+    score: Optional[int] = None
     raw_response: Dict[str, Any] = field(default_factory=dict)
 
 

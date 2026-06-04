@@ -18,29 +18,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from perception.base import GameState, GameStatePerceptor
 
-from .result import snapshot_result
-
-
-def _decreased(metric: str, by: int = 1) -> Callable[[Dict[str, Any]], bool]:
-    """Expectation: <metric> dropped by at least `by`. None reads -> violated."""
-
-    def check(result: Dict[str, Any]) -> bool:
-        before = result.get(f"{metric}_before")
-        after = result.get(f"{metric}_after")
-        return before is not None and after is not None and (before - after) >= by
-
-    return check
-
-
-def _unchanged(metric: str) -> Callable[[Dict[str, Any]], bool]:
-    """Expectation: <metric> is unchanged. None reads -> violated."""
-
-    def check(result: Dict[str, Any]) -> bool:
-        before = result.get(f"{metric}_before")
-        after = result.get(f"{metric}_after")
-        return before is not None and after is not None and before == after
-
-    return check
+from .result import decreased, snapshot_result, unchanged
 
 
 class TestActions:
@@ -75,11 +53,11 @@ class TestActions:
     EXPECTATIONS: Dict[str, Dict[str, Any]] = {
         "fire_and_check_ammo": {
             "describe": "firing should decrease ammo by at least 1",
-            "check": _decreased("ammo", 1),
+            "check": decreased("ammo", 1),
         },
         "idle_and_check_ammo": {
             "describe": "idling should leave ammo unchanged",
-            "check": _unchanged("ammo"),
+            "check": unchanged("ammo"),
         },
     }
 

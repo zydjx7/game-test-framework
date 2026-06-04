@@ -40,7 +40,7 @@ def _client(failure_type: str | None, confidence: float = 0.9, reasoning: str = 
 ANOMALY = {
     "action": "fire_and_check_ammo",
     "expected": "firing should decrease ammo by at least 1",
-    "result": {"ammo_before": 26, "ammo_after": 26, "delta": 0},
+    "result": {"ammo_before": 26, "ammo_after": 26},
 }
 
 
@@ -86,8 +86,8 @@ class TestReflect:
     def test_history_is_included_in_prompt(self):
         client = _client("logic")
         history = [
-            {"step": 0, "action": "fire_and_check_ammo", "result": {"delta": 0}},
-            {"step": 1, "action": "fire_and_check_ammo", "result": {"delta": 0}},
+            {"step": 0, "action": "fire_and_check_ammo", "result": {"ammo_before": 26, "ammo_after": 26}},
+            {"step": 1, "action": "fire_and_check_ammo", "result": {"ammo_before": 26, "ammo_after": 26}},
         ]
         Reflector(client=client, model="x").reflect(ANOMALY, history=history)
         user_msg = client.last_kwargs["messages"][1]["content"]
