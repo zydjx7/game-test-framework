@@ -78,7 +78,8 @@ class TestAgentLoop:
         out = run_agent_loop(GOAL_FIRE3, lib, gt, FakeDecider("fire_and_check_ammo"))
         assert out["status"] == "success"
         assert out["steps"] == 3
-        assert out["cumulative"]["delta"] == 3
+        cum = out["cumulative"]
+        assert cum["ammo_before"] - cum["ammo_after"] == 3
 
 
 class TestFunctionCallingDecider:

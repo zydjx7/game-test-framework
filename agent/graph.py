@@ -28,11 +28,12 @@ from typing import Any, Dict, List, Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from actions.result import accumulate
+
 
 class AgentState(TypedDict, total=False):
     history: List[Dict[str, Any]]
     cumulative: Dict[str, Any]
-    first_before: Optional[int]
     last_action: str
     last_result: Dict[str, Any]
     anomaly: Optional[Dict[str, Any]]
@@ -55,25 +56,13 @@ def _tools_spec(goal: Any, action_lib: Any) -> List[Dict[str, str]]:
 def _apply_result(state: AgentState, action: str, result: Dict[str, Any], action_lib: Any) -> Dict[str, Any]:
     """Shared state update for both `act` and recovery `redo`."""
 
-    first_before = state.get("first_before")
-    if first_before is None:
-        first_before = result.get("ammo_before")
-    ammo_after = result.get("ammo_after")
     step = state.get("step", 0) + 1
-    cumulative = {
-        "ammo_before": first_before,
-        "ammo_after": ammo_after,
-        "delta": (first_before or 0) - (ammo_after or 0),
-        "steps": step,
-        "last_action": action,
-        "last_delta": result.get("delta"),
-    }
+    cumulative = accumulate(state.get("cumulative", {}), result, step, action)
     history = state.get("history", []) + [
         {"step": state.get("step", 0), "action": action, "result": result}
     ]
     anomaly = action_lib.check_expectation(action, result)
     return {
-        "first_before": first_before,
         "last_result": result,
         "history": history,
         "cumulative": cumulative,
@@ -199,7 +188,7 @@ def run_reflective_agent(
     )
     action_lib.prim.reset()
     initial: AgentState = {
-        "history": [], "cumulative": {}, "first_before": None,
+        "history": [], "cumulative": {},
         "cases": [], "status": "running", "step": 0,
         "recovery_attempts": 0, "anomaly": None, "bug_report": None,
     }

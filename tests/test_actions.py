@@ -87,19 +87,19 @@ class TestComposites:
         prim.reset()
         return TestActions(prim), GroundTruthPerceptor()
 
-    def test_fire_and_check_ammo_reports_delta_one(self):
+    def test_fire_and_check_ammo_reports_before_after(self):
         actions, gt = self._setup()
         result = actions.fire_and_check_ammo(gt)
         assert result["ammo_before"] == 26
         assert result["ammo_after"] == 25
-        assert result["delta"] == 1
+        assert result["ammo_before"] - result["ammo_after"] == 1
+        assert "delta" not in result  # canonical schema: before/after only
 
-    def test_idle_and_check_ammo_reports_zero_delta(self):
+    def test_idle_and_check_ammo_reports_unchanged(self):
         actions, gt = self._setup()
         result = actions.idle_and_check_ammo(gt)
         assert result["ammo_before"] == 26
         assert result["ammo_after"] == 26
-        assert result["delta"] == 0
 
     def test_repeated_fire_reduces_by_three(self):
         actions, gt = self._setup()
@@ -111,7 +111,7 @@ class TestComposites:
     def test_run_dispatches_by_name(self):
         actions, gt = self._setup()
         result = actions.run("fire_and_check_ammo", gt)
-        assert result["delta"] == 1
+        assert result["ammo_before"] - result["ammo_after"] == 1
 
     def test_run_rejects_unknown_template(self):
         actions, gt = self._setup()
@@ -130,27 +130,32 @@ class TestComposites:
 
 class TestExpectations:
     def test_fire_expectation_met_returns_no_anomaly(self):
-        assert TestActions.check_expectation("fire_and_check_ammo", {"delta": 1}) is None
+        result = {"ammo_before": 26, "ammo_after": 25}
+        assert TestActions.check_expectation("fire_and_check_ammo", result) is None
 
     def test_fire_expectation_violated_returns_anomaly(self):
-        anomaly = TestActions.check_expectation("fire_and_check_ammo", {"delta": 0})
+        result = {"ammo_before": 26, "ammo_after": 26}
+        anomaly = TestActions.check_expectation("fire_and_check_ammo", result)
         assert anomaly is not None
         assert anomaly["action"] == "fire_and_check_ammo"
         assert "decrease" in anomaly["expected"]
-        assert anomaly["result"]["delta"] == 0
+        assert anomaly["result"]["ammo_after"] == 26
 
     def test_idle_expectation_met_when_unchanged(self):
-        assert TestActions.check_expectation("idle_and_check_ammo", {"delta": 0}) is None
+        result = {"ammo_before": 26, "ammo_after": 26}
+        assert TestActions.check_expectation("idle_and_check_ammo", result) is None
 
     def test_idle_expectation_violated_when_ammo_drops(self):
-        anomaly = TestActions.check_expectation("idle_and_check_ammo", {"delta": 1})
+        result = {"ammo_before": 26, "ammo_after": 25}
+        anomaly = TestActions.check_expectation("idle_and_check_ammo", result)
         assert anomaly is not None
         assert anomaly["action"] == "idle_and_check_ammo"
 
     def test_unknown_template_has_no_expectation(self):
-        assert TestActions.check_expectation("nuke_everything", {"delta": 99}) is None
+        assert TestActions.check_expectation("nuke_everything", {"ammo_after": 99}) is None
 
-    def test_none_delta_does_not_crash(self):
-        # a perception failure can produce delta None -> treated as violation, no crash
-        anomaly = TestActions.check_expectation("fire_and_check_ammo", {"delta": None})
+    def test_none_read_is_violation_without_crashing(self):
+        # a perception failure can produce a None read -> treated as violation
+        result = {"ammo_before": 26, "ammo_after": None}
+        anomaly = TestActions.check_expectation("fire_and_check_ammo", result)
         assert anomaly is not None

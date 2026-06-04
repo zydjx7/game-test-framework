@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from actions.result import summarize_result
+
 
 class FailureType(str, Enum):
     PERCEPTION = "perception"
@@ -157,10 +159,9 @@ def _render_prompt(anomaly: Dict[str, Any], history: List[Dict[str, Any]]) -> st
         "",
     ]
     if history:
-        lines.append("Recent steps this episode (action -> ammo delta):")
+        lines.append("Recent steps this episode (action -> result):")
         for h in history:
-            result = h.get("result", {})
-            lines.append(f"  step {h.get('step')}: {h.get('action')} -> delta {result.get('delta')}")
+            lines.append(f"  step {h.get('step')}: {h.get('action')} -> {summarize_result(h.get('result', {}))}")
     else:
         lines.append("No prior steps this episode.")
     lines.append("")

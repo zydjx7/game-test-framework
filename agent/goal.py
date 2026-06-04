@@ -9,7 +9,9 @@ the per-step actions. The agent decides HOW. A Scenario block looks like:
       Success: ammo_before - ammo_after >= 1
 
 `Success:` compiles to a predicate over the agent loop's cumulative result
-dict (keys: ammo_before, ammo_after, delta, steps, last_action, last_delta).
+dict, which holds, for every observed metric, the first `<m>_before` and the
+latest `<m>_after` (e.g. ammo_before/ammo_after, health_before/health_after),
+plus `steps` and `last_action`.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ class Goal:
 def compile_success(expression: str) -> Callable[[Dict[str, Any]], bool]:
     """Compile a `Success:` expression into a predicate over the result dict.
 
-    The expression may reference result keys (ammo_before, ammo_after, delta,
+    The expression may reference cumulative keys (ammo_before, ammo_after,
     steps, ...) and standard comparison/arithmetic operators. It is evaluated
     with no builtins. Gherkin here is trusted researcher-authored input, not
     untrusted user input, so a sandboxed eval is acceptable and keeps the
