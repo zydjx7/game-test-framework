@@ -1,84 +1,82 @@
-# 🎮 Game Test Automation Framework
+# 🎮 Agent-Based FPS Game Testing Framework
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
-[![OpenCV](https://img.shields.io/badge/OpenCV-4.5+-green.svg)](https://opencv.org)
-[![BDD](https://img.shields.io/badge/BDD-Gherkin-yellow.svg)](https://cucumber.io/docs/gherkin/)
-[![ViZDoom](https://img.shields.io/badge/ViZDoom-1.2+-orange.svg)](https://vizdoom.farama.org/)
+[![LangGraph](https://img.shields.io/badge/Agent-LangGraph-ff69b4.svg)](https://langchain-ai.github.io/langgraph/)
+[![BDD](https://img.shields.io/badge/Spec-Goal--level%20Gherkin-yellow.svg)](https://cucumber.io/docs/gherkin/)
+[![VLM](https://img.shields.io/badge/Perception-VLM%20%2B%20GroundTruth-green.svg)](https://vizdoom.farama.org/)
 [![DeepSeek](https://img.shields.io/badge/LLM-DeepSeek-purple.svg)](https://api.deepseek.com)
+[![Tests](https://img.shields.io/badge/tests-110%20passing-brightgreen.svg)](#)
 
-> 🎓 **修士研究项目**（立命館大学情報理工学研究科 M1, 2026 年 4 月入学）
-> 研究方向：基于 LLM Agent + VLM 的轻量级 FPS 游戏自动化测试框架
-> 当前阶段：**Phase 0.2 完成** — ViZDoom wrapper 已迁入主项目，下一步进入 ground truth / VLM perception
+An **LLM-agent framework for automatically testing FPS games**. You write a test
+*goal* in plain Gherkin; an agent perceives the game (VLM or ground truth),
+**chooses its own actions** via function calling, judges success, and — when an
+action doesn't do what it should — **reflects on why** (perception / execution /
+logic) and either recovers or reports a bug.
 
-## 📖 项目概述
+> 🎓 修士研究 (M1, 立命館大学情報理工学研究科). The same system spans two angles:
+> **AI-testing** (BDD, VLM game-state recognition, agent test execution, bug
+> detection) and **agent engineering** (Planning, Tool Use / Function Calling,
+> Reflection, LangGraph orchestration, evaluation).
 
-本仓库实现一个**基于 LLM Agent 的 FPS 游戏自动化测试框架**，研究核心创新点：
+---
 
-1. **Goal-level Gherkin** — Gherkin 从"步骤描述"升级为"测试目标描述"
-2. **三类 failure 反思恢复**（Perception / Execution / Logic）
-3. **Mutation Testing + LLM Oracle** — 通过 ACS 脚本注入 seeded bug 自动评估
+## ✨ Why it's interesting
 
-项目分两层：
-- **AssaultCube baseline**（已完成）：本科论文系统，作为论文 Section IV 的对比基线保留
-- **ViZDoom main line**（Phase 0.2+ 渐进新增）：Python API + ground truth + ACS 脚本可注入 bug
+- **Goal-level BDD, not step scripts.** A scenario states the *goal*
+  (`Success: ammo_before - ammo_after >= 1`); the agent decides *how*. No
+  per-step Python functions to maintain.
+- **The agent picks its own actions** with DeepSeek **native function calling**
+  (real `tools`/`tool_calls`, not prompt-parsed).
+- **VLM perception with automatic ground truth.** ViZDoom exposes the true state,
+  so VLM accuracy is measured with zero human labels — concrete ammo reading hit
+  **100%** in the Phase 1 spike.
+- **3-type failure reflection** as a **LangGraph** state machine: an anomaly is
+  classified as `perception` / `execution` / `logic`; recoverable faults are
+  retried, a real (logic) bug is reported instead of silently timing out.
+- **Demonstrated portability.** The *same* agent layer runs on **two games** —
+  ViZDoom and a pure-Python **ToyFPS** — with multi-metric goals (ammo, health,
+  score) and **zero agent-code changes**. Plugging in a new game means writing an
+  adapter, not touching the agent.
 
-两层通过 [perception/base.py](perception/base.py) 的 `GameStatePerceptor` 统一接口连接。
-
-## 🗺️ 研究路线图
-
-| Phase | 月份 | 状态 | 核心目标 |
-|---|---|---|---|
-| **0** | M1 | 🟡 进行中 | ViZDoom 环境就绪 + perception 接口抽出 |
-| 0.1 | M1 | ✅ 完成 | `GameStatePerceptor` 接口 + `CVPerceptor` 包装层 |
-| 1 | M2-3 | ⚪ 未开始 | VLM Perception + Ground Truth 对比（多 backend） |
-| 2 | M4-5 | ⚪ 未开始 | Action Executor + Goal-level Gherkin + 最小 agent loop |
-| 3 | M6-7 | ⚪ 未开始 | Reflection（三类 failure 分类与恢复） |
-| 4 | M8-9 | ⚪ 未开始 | LLM Oracle + Mutation Testing |
-| 5 | M10+ | ⚪ 未开始 | 论文写作 + 求职 |
-
-## 🏗️ 框架架构
+## 🧠 Architecture
 
 ```
-game-testing-main/
-│
-├── 📁 Code/                            # AssaultCube baseline（论文 baseline，不动）
-│   ├── 🎯 GameStateChecker/            # 经典 CV 感知：模板匹配 + OCR
-│   │   ├── LogicLayer.py               # 弹药/准星检测主入口
-│   │   ├── VisionUtils.py              # CV 工具（SIFT 特征匹配等）
-│   │   └── AmmoTemplateRecognizer.py   # 数字模板识别器
-│   ├── 🧪 bdd/                         # BDD 主流程（DeepSeek + behave）
-│   │   ├── run_tests.py                # 入口
-│   │   ├── test_generator/             # LLM 生成 Gherkin
-│   │   └── features/steps/             # behave step functions
-│   └── 🎵 SoundTestingSupport/         # 音频测试 PoC
-│
-├── 📁 src/                             # 共享层
-│   ├── llm/client_helpers.py           # DeepSeek 统一入口（OpenAI-compatible SDK）
-│   ├── gherkin/                        # Gherkin parser
-│   └── rivergame/                      # legacy（标 legacy，不动）
-│
-├── 📁 perception/                      # ⭐ Phase 0.1 新增：统一感知接口
-│   ├── base.py                         # GameStatePerceptor ABC + GameState dataclass
-│   └── cv_perceptor.py                 # 包装 Code/GameStateChecker
-│
-├── 🧪 tests/                           # pytest（含新 test_cv_perceptor.py）
-│
-├── 📁 env/                             # ✅ Phase 0.2 新增：ViZDoom 环境封装
-├── 📁 actions/                         # ⏳ Phase 2
-├── 📁 agent/                           # ⏳ Phase 2-3
-├── 📁 oracle/                          # ⏳ Phase 4
-└── 📁 experiments/                     # ✅ Phase 0.2 起渐增（ViZDoom hello-world / 对比实验脚本）
+  goals.feature  ──parse──►  Goal (success = expression over cumulative state)
+                                   │
+   ┌───────────────────────── AGENT LAYER (game-agnostic, reused as-is) ─────────────────────────┐
+   │  observe ─► decide ─► act ─► check ─┬─ success ─────────────► done                            │
+   │   (VLM/GT) (function   (run   (expectation                                                     │
+   │            calling)   template)  met?)  └─ anomaly ─► reflect ─┬─ perception ─► re-observe     │
+   │                                                                ├─ execution  ─► retry         │
+   │                                                                └─ logic      ─► REPORT BUG    │
+   └────────────────────────────────────────────────────────────────────────────────────────────┘
+                                   │  (LangGraph StateGraph)
+   ┌───────────────────────── ADAPTER LAYER (per game) ─────────────────────────┐
+   │   Env/State (game_variables, screen?)  ·  Perceptor (VLM / GroundTruth)     │
+   │   Action library (composite test templates the agent chooses among)        │
+   └────────────────────────────────────────────────────────────────────────────┘
+        implementations:  env/ + actions/  (ViZDoom)        toy_fps/  (pure Python)
 ```
 
-## 🚀 快速开始
+Testing capabilities (left) ride on agent capabilities (right): BDD specs,
+VLM/CV game-state recognition, bug detection ↔ Planning, Tool Use, Reflection,
+LangGraph, agent evaluation.
 
-### 环境要求
+## 📊 Status & key results
 
-- Python 3.10+（ViZDoom 兼容性要求）
-- OpenCV 4.5+
-- Windows 用户额外需要：Microsoft Visual C++ 2015-2022 Redistributable（ViZDoom 依赖）
+| Phase | Done | Result |
+|---|---|---|
+| 0 — ViZDoom env + perception interface | ✅ | wrapper + `GameStatePerceptor` ABC |
+| 1 — VLM perception vs ground truth | ✅ | **concrete ammo accuracy 100%** (Qwen3-VL-Flash), ~¥0.01/run |
+| 2 — Action library + goal-level Gherkin + agent loop | ✅ | 3/3 goals, agent self-selects actions via function calling |
+| 3 — 3-type failure reflection (LangGraph) | ✅ | reflection turns a silent timeout into a bug report; recovers injected faults |
+| 3.5 — generalize core beyond ammo + **ToyFPS** 2nd game | ✅ | same agent runs on 2 games, multi-metric |
+| 4 — LLM oracle + mutation testing | ⏳ | thesis track |
 
-### 安装
+110 unit tests passing. AssaultCube baseline (undergrad CV/BDD system) is kept
+for comparison.
+
+## 🚀 Quickstart
 
 ```bash
 git clone https://github.com/zydjx7/game-test-framework.git
@@ -86,120 +84,54 @@ cd game-test-framework
 pip install -r requirements.txt
 ```
 
-### LLM 配置
-
-项目用 **OpenAI-compatible SDK** 接入 **DeepSeek**（不是 OpenAI）。在根目录 `.env`：
+`.env` (project root) — text LLM (DeepSeek) + VLM (Qwen via DashScope):
 
 ```bash
-OPENAI_API_KEY=your_deepseek_api_key
-OPENAI_BASE_URL=https://api.deepseek.com
-OPENAI_MODEL=deepseek-v4-flash
-USE_LLM_ANALYSIS=true
+DEEPSEEK_API_KEY=sk-...          # or OPENAI_API_KEY (OpenAI-compatible to DeepSeek)
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
+DASHSCOPE_API_KEY=sk-...         # Qwen3-VL-Flash perception (Alibaba Bailian)
 ```
 
-> ⚠️ 旧模型名 `deepseek-chat` / `deepseek-reasoner` 将于 **2026-07-24** 完全下线。
-> 新代码请使用 `deepseek-v4-flash`（高性价比，284B 总参 / 13B 激活）或
-> `deepseek-v4-pro`（最强，1.6T 总参 / 49B 激活）。
-> 两者都是 1M context + 支持 thinking/non-thinking 双模式。
-> 详见 [DeepSeek 官方 pricing 文档](https://api-docs.deepseek.com/quick_start/pricing/)。
-
-### 运行
+Three commands:
 
 ```bash
-# 跑 AssaultCube baseline 测试（既有功能）
-cd Code/bdd
-python run_tests.py --mode predefined --feature generated_test.feature --target assaultcube
-
-# 跑 pytest（含 Phase 0.1 新单元测试）
-python -m pytest
-
-# Phase 0.2 ViZDoom wrapper smoke（需要本机已安装 ViZDoom，可能打开窗口）
-python experiments/vizdoom/hello_doom.py
+python -m pytest                         # 110 tests (no API key, no ViZDoom needed)
+python experiments/phase2_agent_demo.py  # agent self-tests 3 goals on ViZDoom (needs ViZDoom + DeepSeek)
+python experiments/toy_fps_demo.py       # SAME agent on the pure-Python ToyFPS (portability; no ViZDoom)
 ```
 
-## 🧩 Perception 接口（Phase 0.1）
+## 🔌 Plug in a new game
 
-新模块 [perception/](perception/) 把感知后端抽象为统一接口，让 Phase 1+ 的 VLM 和 ground truth 后端能无侵入接入：
+The agent layer is fixed; a new game is an **adapter**. Provide a state with
+`game_variables` (screen optional), primitives, an action library of composite
+test templates, and a `goals.feature`. Reuse `GroundTruthPerceptor`, or write a
+`VLMPerceptor` for pixel-based perception. Full contract + checklist:
+**[`Doc/adapter-contract.md`](Doc/adapter-contract.md)**. Worked example:
+[`toy_fps/`](toy_fps/) (~150 lines) + [`tests/test_toy_fps.py`](tests/test_toy_fps.py).
 
-```python
-from perception import CVPerceptor
+## 🗂️ Project structure
 
-# 包装既有 AssaultCube CV pipeline
-perceptor = CVPerceptor(target_name="assaultcube")
-state = perceptor.perceive(screenshot, expected_ammo=20, check_crosshair=True)
-
-print(state.ammo)           # 20（来自模板匹配 / OCR 兜底）
-print(state.crosshair_red)  # True/False
+```
+perception/   GameStatePerceptor ABC; GroundTruth / VLM / CV perceptors
+actions/      primitives + composite test templates + result schema helpers
+agent/        goal parser, function-calling loop, reflection, LangGraph graph
+env/          ViZDoom wrapper + trajectory recorder
+toy_fps/      pure-Python 2nd game (portability proof + fast test fixture)
+experiments/  perception/reflection eval, agent demos, failure injection
+tests/        110 pytest unit tests
+Doc/          research plan, per-phase design notes, adapter contract, reports
+Code/ src/    AssaultCube baseline (undergrad system, kept for comparison)
 ```
 
-Phase 1+ 将新增两个 backend，对外接口不变：
+## 🧰 Tech stack
 
-- `GroundTruthPerceptor` — 直接读 ViZDoom `state.game_variables`，作为评估基准
-- `VLMPerceptor` — DeepSeek-VL2 / Qwen-VL / GPT-4o-mini 多 backend 视觉模型
+`LLM Agent` · `Function Calling / Tool Use` · `LangGraph` · `Reflection / failure
+taxonomy` · `VLM (Qwen3-VL) perception` · `Goal-level BDD / Gherkin` · `agent
+evaluation` · `ViZDoom` · `DeepSeek` · `Python`
 
-## 🎯 核心功能（AssaultCube baseline）
+## 📚 Design docs
 
-### 1. 游戏状态检测
-
-- ✅ 弹药数量识别（单/双位数模板匹配 + OCR 兜底）
-- ✅ 准星状态分析（SIFT 特征匹配）
-- ✅ 调试图像自动保存到 `debug/` 目录便于排查
-
-### 2. BDD 自动化测试
-
-```gherkin
-Feature: 武器系统测试
-  Scenario: 弹药消耗验证
-    Given the game is started
-    When player equips a primary weapon
-    Then the ammo displayed should be 20
-    When player fires the weapon
-    Then the ammo count should decrease
-```
-
-### 3. LLM 智能测试生成
-
-通过 DeepSeek 自动从自然语言描述生成 Gherkin 测试用例。
-
-## 🔧 配置说明
-
-`Code/GameStateChecker/config.yaml`（不在 git 跟踪，参考结构）：
-
-```yaml
-active_target: assaultcube
-targets:
-  assaultcube:
-    cv_params:
-      ammo_bbox_rel: [0.68, 0.92, 0.05, 0.064]  # 相对坐标
-      crosshair_region: [0.45, 0.4, 0.1, 0.2]
-```
-
-## 🎥 演示视频
-
-AssaultCube baseline 演示：https://youtu.be/qFfWvaLtOU0
-
-ViZDoom main line demo 计划在 Phase 1 末发布。
-
-## 📚 相关文档
-
-- 完整研究计划（5-Phase）：内部文档 `扩展构想-ViZDoom版.md`
-- 架构设计：`Doc/` 目录
-- Phase 0.1 接口设计意图：见 [perception/base.py](perception/base.py) 模块 docstring
-
-## 🤝 贡献指南
-
-本仓库当前是个人研究项目，欢迎 issue 讨论。
-
-## 📄 许可证
-
-License 暂未确定，请勿用于商业用途。学术参考请通过 Issue 联系作者。
-
-## 📞 联系
-
-- 🐛 Issues：[GitHub Issues](https://github.com/zydjx7/game-test-framework/issues)
-
-## 🙏 致谢
-
-- 本科指导：大连理工大学
-- 修士指导：丸山 勝久 先生（立命館大学）
-- 启发来源：TITAN (NetEase), RiverGame, ReAct, Voyager
+`Doc/research-plan.md` (5-phase plan) · `Doc/phase{1,2,3}-design.md` ·
+`Doc/phase3-reflection-report.md` (eval) · `Doc/adapter-contract.md` ·
+`Doc/v2-roadmap.md` (MCP / RAG / multi-agent — future).

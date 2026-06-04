@@ -225,14 +225,17 @@
 - [Claude] 2026-06-03 docs: Stage 1a — adapter contract ("plug a new game")
   - Doc/adapter-contract.md: the exact interfaces a new game must provide, distilled from the TWO implementations (ViZDoom + ToyFPS). Covers State (game_variables required, screen/done optional), Primitives (reset/observe + mechanic methods), Perceptor (reuse GroundTruthPerceptor), Action library (DESCRIPTIONS/run/check_expectation/list_templates + snapshot_result-built results + EXPECTATIONS via shared decreased/increased/unchanged), goals.feature, and an explicit "do not touch the agent layer" list + a new-game checklist mirroring toy_fps/.
 
+- [Claude] 2026-06-03 docs: Stage 1d — README rewritten + ToyFPS demo (internship-facing)
+  - README.md fully rewritten (was stale at "Phase 0.2"): English (professional/international) with a bilingual research note; route-neutral (labels both AI-testing and agent-engineering). Includes value prop, "why it's interesting", an ASCII architecture diagram (agent layer + adapter layer), a status/results table (perception 100%, reflection, portability), quickstart (.env + 3 commands), a "plug a new game" section pointing to Doc/adapter-contract.md, accurate project structure, tech-stack keywords. File is UTF-8 (the earlier "garbled" was a terminal issue, not the file).
+  - experiments/toy_fps_demo.py (new): runnable portability demo — the SAME agent layer on ToyFPS, 3/3 multi-metric goals, no ViZDoom. Verified live.
+
 ## Current In Progress
 
-- Stage 1 foundation nearly complete: schema generalized (3.5), ToyFPS 2nd impl (1c), adapter contract documented (1a). Two games run on one unchanged agent layer.
+- Stage 1 foundation COMPLETE: schema generalized (3.5) + ToyFPS 2nd impl (1c) + adapter contract (1a) + README/demo (1d). The project is now presentable and portability is demonstrated + documented + runnable.
 
 ## Next Task
 
-- 1d packaging: REWRITE README (stale at "Phase 0.2") to current state — Phase 0-3 done + portability (ViZDoom + ToyFPS) + an architecture diagram + "plug a new game" pointer + 3 run commands + a demo. This is the internship-facing deliverable.
-- Optional later: 1b 2nd ViZDoom mechanic (health/done); step 3 re_observe/retry split + recovery per-anomaly; thesis track (Phase 4 mutation + rigorous baselines); MCP/RAG (v2-roadmap).
+- Optional polish/extensions (pick per priority): 1b 2nd ViZDoom mechanic (health/done); step 3 re_observe/retry split + recovery per-anomaly; architecture diagram as an image for the README; thesis track (Phase 4 mutation + rigorous baselines incl. rule-based); MCP / RAG-B / multi-agent (Doc/v2-roadmap.md).
 
 ## Next Task
 
