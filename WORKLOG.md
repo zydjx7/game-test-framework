@@ -216,14 +216,20 @@
   - goals.feature + goal tests UNCHANGED (flat naming preserved ammo_before/ammo_after). Tests updated where they asserted the removed `delta` key (test_actions, test_agent_loop). Full suite 104 passed, 4 legacy deselected.
   - Live re-smoke (real ViZDoom + DeepSeek): 3/3 clean goals (cumulative now generic {ammo_before, ammo_after}) + injected-execution still reflects->recovers. Proves ammo behaviour is equivalent while the core no longer hardcodes ammo.
 
+- [Claude] 2026-06-03 feat: Stage 1c — ToyFPS second game adapter (portability DEMONSTRATED)
+  - toy_fps/ (game.py state machine ammo/health/score, no screen; adapter.py ToyPrimitives + multi-metric ToyActions fire_and_check_ammo/score + heal_and_check_health; goals.feature 3 multi-metric goals). Perception REUSED (GroundTruthPerceptor, extended to read `score`); GameState gained an Optional `score` field (backward-compatible).
+  - Expectation predicates moved to actions/result.py as public decreased/increased/unchanged(metric) so both TestActions (ViZDoom) and ToyActions reuse them. test_reflection.py fixtures de-delta'd (canonical schema).
+  - tests/test_toy_fps.py (6): the REAL run_reflective_agent / run_agent_loop run on ToyFPS across decreasing (ammo) and increasing (score, health) metrics; screen-less state works (Observation contract). Full suite 110 passed, 4 legacy deselected.
+  - LIVE smoke (real DeepSeek, agent layer UNCHANGED): 3/3 ToyFPS goals — ammo 10->9, score 0->1, health 50->60; agent picked the right composite for each. Portability is now DEMONSTRATED, not just architectural; the generalized schema is proven beyond ammo (both directions).
+
 ## Current In Progress
 
-- Phase 3.5 done: core schema generalized + de-ammo'd, behaviour-equivalent, 104 green. The agent layer is now metric-agnostic.
+- Stage 1c done: ToyFPS proves the same agent layer runs on a 2nd game with multi-metric goals. The adapter contract is now real (two implementations: ViZDoom + ToyFPS).
 
 ## Next Task
 
-- Stage 1c: ToyGame ~100-line second reference implementation consuming the generalized schema (ammo + health + score) with the agent layer UNCHANGED — proves portability and exercises the new schema beyond ammo. Also a fast, ViZDoom-free test fixture.
-- Then 1b (2nd ViZDoom mechanic: health/done), step 3 (re_observe/retry split + recovery per-anomaly), 1d (README rewrite + diagram).
+- Stage 1a (now cheap): document the adapter contract that ToyFPS + ViZDoom both satisfy (env state w/ game_variables + optional screen; perceptor; action library list_templates/run/check_expectation/DESCRIPTIONS) in a short "plug in a new game" doc.
+- Then 1b (2nd ViZDoom mechanic), step 3 (re_observe/retry split + recovery per-anomaly), 1d (README rewrite + architecture diagram + demo).
 
 ## Next Task
 
