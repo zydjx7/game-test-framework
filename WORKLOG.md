@@ -229,6 +229,10 @@
   - README.md fully rewritten (was stale at "Phase 0.2"): English (professional/international) with a bilingual research note; route-neutral (labels both AI-testing and agent-engineering). Includes value prop, "why it's interesting", an ASCII architecture diagram (agent layer + adapter layer), a status/results table (perception 100%, reflection, portability), quickstart (.env + 3 commands), a "plug a new game" section pointing to Doc/adapter-contract.md, accurate project structure, tech-stack keywords. File is UTF-8 (the earlier "garbled" was a terminal issue, not the file).
   - experiments/toy_fps_demo.py (new): runnable portability demo — the SAME agent layer on ToyFPS, 3/3 multi-metric goals, no ViZDoom. Verified live.
 
+- [Codex] 2026-06-05 shared: add Chinese README mirror
+  - Added `README.zh-CN.md` as a Chinese mirror of the current internship-facing README and linked it from `README.md`.
+  - Windows terminal `Get-Content` may still mojibake Chinese/emoji; the README files are UTF-8 Markdown intended for GitHub rendering.
+
 ## Current In Progress
 
 - Stage 1 foundation COMPLETE: schema generalized (3.5) + ToyFPS 2nd impl (1c) + adapter contract (1a) + README/demo (1d). The project is now presentable and portability is demonstrated + documented + runnable.
