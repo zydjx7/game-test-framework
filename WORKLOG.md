@@ -222,14 +222,17 @@
   - tests/test_toy_fps.py (6): the REAL run_reflective_agent / run_agent_loop run on ToyFPS across decreasing (ammo) and increasing (score, health) metrics; screen-less state works (Observation contract). Full suite 110 passed, 4 legacy deselected.
   - LIVE smoke (real DeepSeek, agent layer UNCHANGED): 3/3 ToyFPS goals — ammo 10->9, score 0->1, health 50->60; agent picked the right composite for each. Portability is now DEMONSTRATED, not just architectural; the generalized schema is proven beyond ammo (both directions).
 
+- [Claude] 2026-06-03 docs: Stage 1a — adapter contract ("plug a new game")
+  - Doc/adapter-contract.md: the exact interfaces a new game must provide, distilled from the TWO implementations (ViZDoom + ToyFPS). Covers State (game_variables required, screen/done optional), Primitives (reset/observe + mechanic methods), Perceptor (reuse GroundTruthPerceptor), Action library (DESCRIPTIONS/run/check_expectation/list_templates + snapshot_result-built results + EXPECTATIONS via shared decreased/increased/unchanged), goals.feature, and an explicit "do not touch the agent layer" list + a new-game checklist mirroring toy_fps/.
+
 ## Current In Progress
 
-- Stage 1c done: ToyFPS proves the same agent layer runs on a 2nd game with multi-metric goals. The adapter contract is now real (two implementations: ViZDoom + ToyFPS).
+- Stage 1 foundation nearly complete: schema generalized (3.5), ToyFPS 2nd impl (1c), adapter contract documented (1a). Two games run on one unchanged agent layer.
 
 ## Next Task
 
-- Stage 1a (now cheap): document the adapter contract that ToyFPS + ViZDoom both satisfy (env state w/ game_variables + optional screen; perceptor; action library list_templates/run/check_expectation/DESCRIPTIONS) in a short "plug in a new game" doc.
-- Then 1b (2nd ViZDoom mechanic), step 3 (re_observe/retry split + recovery per-anomaly), 1d (README rewrite + architecture diagram + demo).
+- 1d packaging: REWRITE README (stale at "Phase 0.2") to current state — Phase 0-3 done + portability (ViZDoom + ToyFPS) + an architecture diagram + "plug a new game" pointer + 3 run commands + a demo. This is the internship-facing deliverable.
+- Optional later: 1b 2nd ViZDoom mechanic (health/done); step 3 re_observe/retry split + recovery per-anomaly; thesis track (Phase 4 mutation + rigorous baselines); MCP/RAG (v2-roadmap).
 
 ## Next Task
 
