@@ -61,6 +61,15 @@ Protocol; server exposes tools `fire()/observe()/reset()` + resources
 MCP server, no agent change. This is the protocol-isation of rung ①, the
 cross-process/standardised upgrade. Résumé value: MCP is a current standard.
 
+## LLM-assisted adapter generation (onboarding cost) — template now, skill later
+
+Lower the cost of plugging in a new game: an LLM generates the adapter DRAFT
+(state/primitives/action library/goals/tests) from a game spec + the contract +
+ToyFPS. Start with a prompt template (`Doc/adapter-generation-prompt.md`, usable
+today); an `adapter-generator` skill is a later packaging. Honest limit: an LLM
+cannot infer real engine timing (e.g. `FIRE_TICS=16`) — smoke tests + a human
+calibrate. See `Doc/reviews/2026-06-05-llm-adapter-generation-and-agent-collab.md`.
+
 ## Stage 3 (July-Aug) — RAG: knowledge that ports
 
 - **RAG-A (smaller)**: case-based reflection — store past FAILURE cases, retrieve

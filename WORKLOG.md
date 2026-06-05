@@ -233,16 +233,23 @@
   - Added `README.zh-CN.md` as a Chinese mirror of the current internship-facing README and linked it from `README.md`.
   - Windows terminal `Get-Content` may still mojibake Chinese/emoji; the README files are UTF-8 Markdown intended for GitHub rendering.
 
+- [Claude] 2026-06-05 shared: implement Codex review (collaboration + LLM adapter generation)
+  - Reviewed a Codex report (now in Doc/reviews/2026-06-05-llm-adapter-generation-and-agent-collab.md with an explicit adopt/improve/decline verdict).
+  - ADOPTED: cleaned this WORKLOG's duplicate `## Next Task`; added `Doc/reviews/` (cross-agent reviews) + `Doc/adr/` (ADR-0001 flat schema, 0002 foundation-before-MCP, 0003 logic-vs-non-logic) and codified both in AGENTS.md.
+  - IMPROVED Codex's ordering: LLM-assisted adapter onboarding starts as a prompt template (Doc/adapter-generation-prompt.md, usable today), NOT an adapter-generator skill first (skill is later packaging). Mirrors ADR-0002.
+  - DECLINED for now (recorded with reasons): .tasks/current.yaml task queue (over-engineering for 2 agents); MCP server for project state (Codex agrees — stays v2-roadmap).
+
 ## Current In Progress
 
-- Stage 1 foundation COMPLETE: schema generalized (3.5) + ToyFPS 2nd impl (1c) + adapter contract (1a) + README/demo (1d). The project is now presentable and portability is demonstrated + documented + runnable.
+- None. Stage 1 foundation COMPLETE (schema generalized + ToyFPS + adapter contract + README/demo). Collaboration infra added (reviews/, adr/).
 
 ## Next Task
 
-- Optional polish/extensions (pick per priority): 1b 2nd ViZDoom mechanic (health/done); step 3 re_observe/retry split + recovery per-anomaly; architecture diagram as an image for the README; thesis track (Phase 4 mutation + rigorous baselines incl. rule-based); MCP / RAG-B / multi-agent (Doc/v2-roadmap.md).
+- Pick per priority: 1b 2nd ViZDoom mechanic (health/done); step 3 re_observe/retry split + recovery per-anomaly; architecture diagram as an image for the README.
 
-## Next Task
+## Deferred / Later
 
-- Phase 3 Stage 0: pip install langgraph; confirm a 3-node StateGraph runs and is usable without LangChain. (requirements.txt update will be a shared: commit.)
-- Phase 3 Stage A: add a per-step expected effect (e.g. fire_and_check_ammo expects delta>=1) + anomaly detection, usable by both the while baseline and the graph version.
+- Thesis track: Phase 4 (mutation bugs + LLM oracle) + rigorous comparisons (vs hardcoded BDD, vs rule-based reflection). Needs a richer action library first.
+- v2 (Doc/v2-roadmap.md): MCP (game interface as a server), RAG-A/B (case-based reflection / knowledge-driven test generation), multi-agent orchestration.
+- LLM-assisted adapter generation: prompt template now (Doc/adapter-generation-prompt.md); an adapter-generator skill is later packaging.
 

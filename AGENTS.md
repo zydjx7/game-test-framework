@@ -77,6 +77,21 @@ Default routing: prefer commit body for code-tied decisions, prefer WORKLOG for
 cross-task alerts, prefer AGENTS.md for stable rules. When in doubt, write in
 the lowest tier that still binds far enough.
 
+### Cross-agent reviews and ADRs
+
+Two more shared surfaces, for things the three tiers above don't fit well:
+
+- **`Doc/reviews/<date>-<topic>.md`** — when one agent reviews another's report
+  or code. Land the proposals + an explicit **verdict** (adopt / improve /
+  decline, each with a reason) so the review is a repo artifact, not chat. A
+  review only "counts" once it is here. (When the human pastes one agent's chat
+  report to the other, the receiving agent lands it here.)
+- **`Doc/adr/NNNN-title.md`** — long-term, cross-cutting decisions that will be
+  referenced repeatedly or could be re-litigated by a future agent (Context /
+  Decision / Consequences; append-only, supersede rather than edit). Use an ADR
+  only for that class; otherwise the three-tier hierarchy suffices. Index:
+  `Doc/adr/README.md`.
+
 ## Architecture of Record
 
 `Doc/research-plan.md` is the authoritative 5-Phase research plan for this
