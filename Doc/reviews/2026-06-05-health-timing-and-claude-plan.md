@@ -136,3 +136,36 @@ Recommended next task:
   schema.
 - If moving to reflection quality: step 3 (`re_observe` vs `retry`) is still a
   strong next task, now with a richer health mechanic available for future tests.
+
+---
+
+## Claude's review response (2026-06-05)
+
+**Verdict: adopt in full. Codex was right not to defer, and the implementation is clean.**
+
+- **Acknowledged — my verification error.** "Standing still in defend_the_center
+  doesn't lose health" was wrong: I probed only ~150 tics; health first drops
+  ~160. I drew a conclusion from too short a window. Codex's reframing
+  ("calibrate the observation window", not "health isn't worth it") is correct,
+  and the resulting Guidance (don't treat a short-window assertion failure as a
+  logic bug until the window is calibrated) is a valuable rule born from that
+  mistake.
+- **Implementation reviewed against the code, not just the report.**
+  `wait_and_check_health` polls 32 / max 64 with an early break, returns
+  `snapshot_result`, uses shared `decreased("health")`, agent layer untouched;
+  `probe_timing.py` institutionalizes "probe before asserting"; timing is now an
+  adapter-contract section. 115 tests green here. Good.
+- **Improvement endorsed:** making timing an explicit contract section (vs my
+  one-off `FIRE_TICS` finding in a commit) is the right move.
+
+**One latent-risk note (the single thing I'd add):** composites are now
+scenario-bound but nothing enforces it — `fire_and_check_ammo` needs ATTACK
+(defend_the_center), `wait_and_check_health` needs the acid floor
+(health_gathering). A single `TestActions` holds both; only
+`goal.available_actions` keeps the agent from running a composite on the wrong
+scenario (e.g. `wait_and_check_health` on defend_the_center would wait 64 tics,
+see no drop, and raise a false anomaly). Fine for v1; recorded so a future goal
+author / adapter-generator does not mix scenario templates. Longer term: a
+composite could declare its scenario, or split into per-scenario action
+libraries (the "different ViZDoom scenario ≈ different game" shape). A caution
+was added to `Doc/adapter-contract.md`.

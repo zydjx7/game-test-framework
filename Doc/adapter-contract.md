@@ -74,6 +74,14 @@ Current ViZDoom calibration examples:
 Use `experiments/vizdoom/probe_timing.py` to measure these windows before adding
 a scenario-specific composite.
 
+> **Scenario coupling**: because timing and mechanics are scenario-specific, a
+> composite is implicitly bound to one scenario (`fire_and_check_ammo` needs
+> ATTACK in `defend_the_center`; `wait_and_check_health` needs the acid floor in
+> `health_gathering`). Nothing enforces this at runtime — only each
+> `goals.feature`'s `Available actions` keeps the agent from picking a composite
+> on the wrong scenario (which would observe nothing and raise a false anomaly).
+> Keep each goal file's available actions to scenario-appropriate templates.
+
 ## 3. Perceptor (layer 2 — state -> GameState)
 
 Satisfy `perception.GameStatePerceptor`:

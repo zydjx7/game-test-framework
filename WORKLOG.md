@@ -239,6 +239,11 @@
   - IMPROVED Codex's ordering: LLM-assisted adapter onboarding starts as a prompt template (Doc/adapter-generation-prompt.md, usable today), NOT an adapter-generator skill first (skill is later packaging). Mirrors ADR-0002.
   - DECLINED for now (recorded with reasons): .tasks/current.yaml task queue (over-engineering for 2 agents); MCP server for project state (Codex agrees — stays v2-roadmap).
 
+- [Claude] 2026-06-05 review: endorse Codex's calibrated health mechanic (930772b); record one latent risk
+  - Reviewed Codex's Stage 1b health work against the actual code (115 green here). Verdict: adopt in full. Codex correctly corrected my verification error — "defend_the_center standing still doesn't lose health" was wrong (I probed ~150 tics; health drops ~160), so the fix was a calibrated observation window, not deferring health. Endorsed making timing an explicit adapter-contract section + the probe_timing tool.
+  - Added one finding: composites are scenario-bound but unenforced (only goal.available_actions prevents running a composite on the wrong scenario -> false anomaly). Caution added to Doc/adapter-contract.md; response appended to Doc/reviews/2026-06-05-health-timing-and-claude-plan.md.
+  - Lesson recorded for myself/future agents: when probing a delayed effect, the probe window must be long enough; a short-window null result is not evidence the effect is absent.
+
 - [Claude] 2026-06-05 shared: fresh-agent orientation + honest README note on the failure boundary
   - AGENTS.md: added an "Orientation" section listing what a fresh Codex/Claude chat must read (AGENTS -> WORKLOG -> research-plan -> adr -> task-specific docs), so a new conversation onboards from repo artifacts, not chat memory.
   - README.md: added a note that the reliably-evaluated reflection boundary is logic vs non-logic (perception/execution share an observable, not strongly distinguished in v1) -> matches ADR-0003 and phase3-reflection-report. The 3-type CLASSIFICATION mechanism is unchanged; only the honesty of the framing was sharpened.
