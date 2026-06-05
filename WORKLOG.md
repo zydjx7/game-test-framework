@@ -239,9 +239,13 @@
   - IMPROVED Codex's ordering: LLM-assisted adapter onboarding starts as a prompt template (Doc/adapter-generation-prompt.md, usable today), NOT an adapter-generator skill first (skill is later packaging). Mirrors ADR-0002.
   - DECLINED for now (recorded with reasons): .tasks/current.yaml task queue (over-engineering for 2 agents); MCP server for project state (Codex agrees — stays v2-roadmap).
 
+- [Claude] 2026-06-05 shared: fresh-agent orientation + honest README note on the failure boundary
+  - AGENTS.md: added an "Orientation" section listing what a fresh Codex/Claude chat must read (AGENTS -> WORKLOG -> research-plan -> adr -> task-specific docs), so a new conversation onboards from repo artifacts, not chat memory.
+  - README.md: added a note that the reliably-evaluated reflection boundary is logic vs non-logic (perception/execution share an observable, not strongly distinguished in v1) -> matches ADR-0003 and phase3-reflection-report. The 3-type CLASSIFICATION mechanism is unchanged; only the honesty of the framing was sharpened.
+
 ## Current In Progress
 
-- None. Stage 1 foundation COMPLETE (schema generalized + ToyFPS + adapter contract + README/demo). Collaboration infra added (reviews/, adr/).
+- None. Stage 1 foundation COMPLETE (schema generalized + ToyFPS + adapter contract + README/demo). Collaboration infra added (reviews/, adr/, orientation).
 
 ## Next Task
 

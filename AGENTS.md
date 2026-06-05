@@ -3,6 +3,24 @@
 This repository is edited by both Claude Code and Codex. Keep the agents physically
 separate, but keep their shared understanding synchronized.
 
+## Orientation (a fresh agent / new chat starts here)
+
+A new Codex session or Claude Code chat has **no memory of prior chats**. The
+design and plan live in the repo, not in chat. Before doing anything, read these
+in order, then run the Start-of-Task Checklist:
+
+1. **This file (`AGENTS.md`)** — collaboration rules + decision-persistence.
+2. **`WORKLOG.md`** — `## Current In Progress` / `## Next Task` / `## Deferred`.
+3. **`Doc/research-plan.md`** — the authoritative 5-phase plan + invariants.
+4. **`Doc/adr/README.md`** — key long-lived decisions (esp. ADR-0001 result
+   schema, ADR-0003 failure-taxonomy boundary).
+5. **Task-specific**: `Doc/adapter-contract.md` (adding a game),
+   `Doc/phase{N}-design.md` (a phase), `Doc/v2-roadmap.md` (extensions),
+   `Doc/reviews/` (prior cross-agent reviews).
+
+`CLAUDE.md` (user + project) already routes a new Claude chat here; this list
+makes "what to read" explicit so onboarding does not depend on guessing.
+
 ## Worktree Layout
 
 - Claude Code works in `.claude/worktrees/<name>/`.

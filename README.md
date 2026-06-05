@@ -35,6 +35,9 @@ logic) and either recovers or reports a bug.
 - **3-type failure reflection** as a **LangGraph** state machine: an anomaly is
   classified as `perception` / `execution` / `logic`; recoverable faults are
   retried, a real (logic) bug is reported instead of silently timing out.
+  *(The reliably-evaluated boundary is logic vs non-logic — whether to report a
+  bug; perception vs execution share an observable and are not strongly
+  distinguished in v1. See [`Doc/phase3-reflection-report.md`](Doc/phase3-reflection-report.md).)*
 - **Demonstrated portability.** The *same* agent layer runs on **two games** —
   ViZDoom and a pure-Python **ToyFPS** — with multi-metric goals (ammo, health,
   score) and **zero agent-code changes**. Plugging in a new game means writing an
