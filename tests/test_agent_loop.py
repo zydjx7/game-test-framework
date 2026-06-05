@@ -31,9 +31,14 @@ Scenario: Repeated firing reduces ammo by three
   Goal: Fire until ammo drops by three.
   Available actions: fire_and_check_ammo, idle_and_check_ammo
   Success: ammo_before - ammo_after >= 3
+
+Scenario: Waiting reduces health
+  Goal: Wait and confirm health decreases over time.
+  Available actions: wait_and_check_health
+  Success: health_before - health_after >= 1
 """
 )
-GOAL_FIRE, GOAL_IDLE, GOAL_FIRE3 = GOALS
+GOAL_FIRE, GOAL_IDLE, GOAL_FIRE3, GOAL_HEALTH = GOALS
 
 
 class FakeDecider:
@@ -80,6 +85,14 @@ class TestAgentLoop:
         assert out["steps"] == 3
         cum = out["cumulative"]
         assert cum["ammo_before"] - cum["ammo_after"] == 3
+
+    def test_health_goal_succeeds_without_agent_layer_changes(self):
+        lib, gt = _lib()
+        out = run_agent_loop(GOAL_HEALTH, lib, gt, FakeDecider("wait_and_check_health"))
+        assert out["status"] == "success"
+        assert out["steps"] == 1
+        cum = out["cumulative"]
+        assert cum["health_before"] - cum["health_after"] >= 1
 
 
 class TestFunctionCallingDecider:

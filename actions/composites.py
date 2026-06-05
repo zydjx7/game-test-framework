@@ -18,6 +18,10 @@ from typing import Any, Callable, Dict, List, Optional
 
 from perception.base import GameState, GameStatePerceptor
 
+from .primitives import (
+    HEALTH_GATHERING_OBSERVATION_TICS,
+    HEALTH_GATHERING_POLL_TICS,
+)
 from .result import decreased, snapshot_result, unchanged
 
 
@@ -42,6 +46,11 @@ class TestActions:
             "Let the game advance WITHOUT firing, then report ammo before and "
             "after. Choose this when the goal is about staying idle or NOT firing."
         ),
+        "wait_and_check_health": (
+            "Wait without firing within the calibrated health-gathering observation "
+            "window, then report health before and after. Choose this when the goal "
+            "is about health loss over time."
+        ),
     }
 
     # Per-template EXPECTED EFFECT (Phase 3 Stage A). Each maps a template to a
@@ -58,6 +67,12 @@ class TestActions:
         "idle_and_check_ammo": {
             "describe": "idling should leave ammo unchanged",
             "check": unchanged("ammo"),
+        },
+        "wait_and_check_health": {
+            "describe": (
+                "waiting should decrease health within the calibrated observation window"
+            ),
+            "check": decreased("health", 1),
         },
     }
 
@@ -82,6 +97,30 @@ class TestActions:
         after = self._read(perceptor)
         return snapshot_result({"ammo": before.ammo}, {"ammo": after.ammo})
 
+    def wait_and_check_health(self, perceptor: GameStatePerceptor) -> Dict[str, Any]:
+        """Wait until health drops, bounded by the health_gathering timing window."""
+
+        before = self._read(perceptor)
+        after = before
+        elapsed = 0
+
+        while elapsed < HEALTH_GATHERING_OBSERVATION_TICS:
+            tics = min(
+                HEALTH_GATHERING_POLL_TICS,
+                HEALTH_GATHERING_OBSERVATION_TICS - elapsed,
+            )
+            self.prim.wait(tics)
+            elapsed += tics
+            after = self._read(perceptor)
+            if (
+                before.health is not None
+                and after.health is not None
+                and after.health < before.health
+            ):
+                break
+
+        return snapshot_result({"health": before.health}, {"health": after.health})
+
     # -- helpers ---------------------------------------------------------
 
     def run(self, template_name: str, perceptor: GameStatePerceptor) -> Dict[str, Any]:
@@ -93,7 +132,11 @@ class TestActions:
 
     @classmethod
     def list_templates(cls) -> List[str]:
-        return ["fire_and_check_ammo", "idle_and_check_ammo"]
+        return [
+            "fire_and_check_ammo",
+            "idle_and_check_ammo",
+            "wait_and_check_health",
+        ]
 
     @classmethod
     def check_expectation(

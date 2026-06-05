@@ -243,13 +243,18 @@
   - AGENTS.md: added an "Orientation" section listing what a fresh Codex/Claude chat must read (AGENTS -> WORKLOG -> research-plan -> adr -> task-specific docs), so a new conversation onboards from repo artifacts, not chat memory.
   - README.md: added a note that the reliably-evaluated reflection boundary is logic vs non-logic (perception/execution share an observable, not strongly distinguished in v1) -> matches ADR-0003 and phase3-reflection-report. The 3-type CLASSIFICATION mechanism is unchanged; only the honesty of the framing was sharpened.
 
+- [Codex] 2026-06-05 shared: add calibrated ViZDoom health mechanic
+  - Stage 1b health landed in the ViZDoom adapter without touching the agent layer: `wait_and_check_health` uses `snapshot_result` and shared `decreased("health")`; `agent/health_gathering_goals.feature` is a scenario-specific goal file for `health_gathering`.
+  - Timing is now explicit adapter contract: `health_gathering` health loss is polled every 32 tics with a 64-tic max window; `defend_the_center` health loss is documented as long-window/stochastic (~160-200 tics), not a precise one-step assertion.
+  - Added `experiments/vizdoom/probe_timing.py` so future mechanics are calibrated before assertions are written. Verified unit suite and live ViZDoom smoke: health 92->84 in one agent step.
+
 ## Current In Progress
 
 - None. Stage 1 foundation COMPLETE (schema generalized + ToyFPS + adapter contract + README/demo). Collaboration infra added (reviews/, adr/, orientation).
 
 ## Next Task
 
-- Pick per priority: 1b 2nd ViZDoom mechanic (health/done); step 3 re_observe/retry split + recovery per-anomaly; architecture diagram as an image for the README.
+- Pick per priority: remaining 1b maturity (ammo-bounds/death), step 3 re_observe/retry split + recovery per-anomaly, or architecture diagram as an image for the README.
 
 ## Deferred / Later
 

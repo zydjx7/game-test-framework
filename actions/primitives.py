@@ -20,6 +20,8 @@ from typing import Any, List, Optional
 
 FIRE_TICS = 16
 SETTLE_TICS = 2
+HEALTH_GATHERING_POLL_TICS = 32
+HEALTH_GATHERING_OBSERVATION_TICS = 64
 
 
 class ActionPrimitives:

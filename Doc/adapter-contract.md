@@ -49,6 +49,31 @@ Plus your own mechanic methods that YOUR composites call, e.g. `fire_once()`,
 `wait()`, `heal()`. These are not fixed by the framework — primitives and
 composites are designed together inside one adapter.
 
+### Timing calibration
+
+Many FPS effects are not visible on the next tic. A composite is only allowed to
+judge an expectation after its adapter has waited long enough for that effect to
+be observable. Treat timing as part of the adapter contract, not as an ad hoc
+sleep inside a test.
+
+For each new mechanic, record:
+
+- action/effect: e.g. `fire -> ammo decrease`, `wait -> health decrease`
+- scenario: e.g. `defend_the_center`, `health_gathering`
+- observation window: how many tics to hold/poll before judging
+- determinism: stable timing vs stochastic/long-window timing
+
+Current ViZDoom calibration examples:
+
+| Effect | Scenario | Adapter timing | Notes |
+|---|---|---|---|
+| `fire -> ammo decrease` | `defend_the_center` | hold `ATTACK` for 16 tics, then settle 2 tics | First shot has gun-raise latency; short fire windows look like false logic failures. |
+| `wait -> health decrease` | `health_gathering` | poll every 32 tics, max 64 tics | Stable acid-floor damage; used by `wait_and_check_health`. |
+| `wait -> health decrease` | `defend_the_center` | long window (~160-200 tics), stochastic | Enemy contact timing varies; do not use as a precise one-step assertion unless explicitly calibrated. |
+
+Use `experiments/vizdoom/probe_timing.py` to measure these windows before adding
+a scenario-specific composite.
+
 ## 3. Perceptor (layer 2 — state -> GameState)
 
 Satisfy `perception.GameStatePerceptor`:
@@ -136,12 +161,14 @@ Scenario: Firing consumes ammo
 
 1. A State with `game_variables` (dict); `screen` optional.
 2. Primitives: `reset()`, `observe()`, + your mechanic methods.
-3. Perceptor: reuse `GroundTruthPerceptor` (add an `Optional` GameState field if
+3. Timing: calibrate effect latency / observation windows before judging a new
+   mechanic; record stable vs stochastic timing.
+4. Perceptor: reuse `GroundTruthPerceptor` (add an `Optional` GameState field if
    you have a new metric); custom only if reading pixels.
-4. Action library: composites returning `snapshot_result`, plus `DESCRIPTIONS`,
+5. Action library: composites returning `snapshot_result`, plus `DESCRIPTIONS`,
    `EXPECTATIONS` (shared helpers), `run`, `check_expectation`, `list_templates`,
    and a `prim`.
-5. `goals.feature` with `Success:` over `<metric>_before/<metric>_after/steps`.
-6. Run it: `run_reflective_agent(goal, your_lib, perceptor, decider, reflector)`
+6. `goals.feature` with `Success:` over `<metric>_before/<metric>_after/steps`.
+7. Run it: `run_reflective_agent(goal, your_lib, perceptor, decider, reflector)`
    — the agent layer is unchanged. (ToyFPS is the worked example; see
    `tests/test_toy_fps.py`.)
