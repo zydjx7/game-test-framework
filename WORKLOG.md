@@ -263,13 +263,20 @@
   - HONEST BOUNDARY — do NOT overclaim: we still do NOT claim accurate perception-vs-execution classification (ADR-0003/0004). The split's value is "if it IS perception, re_observe recovers without wasting an action"; the ladder disambiguates by recovery OUTCOME, not by the label.
   - FOLLOW-UP (next commit): persistent faults now escalate to suspected-logic on ladder exhaustion instead of silently timing out -> Doc/phase3-reflection-report.md "persistent proposed 3/5" will rise toward 5/5; eval_reflection.py must be RE-RUN before that figure is re-cited. Budget tuning must be a pre-declared config, never per-case.
 
+- [Claude] 2026-06-06 docs: refresh Phase 3 reflection report under the recovery ladder (persistent 3/5 -> 5/5)
+  - Re-ran experiments/eval_reflection.py --runs 5 --max-reobserves 1 --max-retries 1 (real ViZDoom + DeepSeek). Persistent (logic-like) fault: proposed bug_reported 5/5 (was 3/5) vs baseline 0/5 silent timeout. The jump is STRUCTURAL: ladder exhaustion (re_observe failed AND retry failed) escalates to suspected_logic, no longer hostage to the LLM occasionally guessing "logic".
+  - perception: proposed recovers via re_observe ALONE (1.0 step, no 2nd shot) vs baseline brute-force 2.0 -> a modest appropriateness win. execution: re_observe fails -> retry recovers (2.0 steps). Both 5/5 recovered.
+  - perception was STILL mislabelled "execution" by the LLM yet recovered -> perception-vs-execution accuracy STILL NOT claimed (ADR-0003/0004 honesty intact).
+  - Doc/phase3-reflection-report.md rewritten (dated 2026-06-06, supersedes the 2026-06-03 table-based run). Budget sweep (2/1, 3/1, 2/2) deliberately NOT done here -> it is a separate robustness experiment, kept out of this report-refresh commit to avoid scope creep.
+
 ## Current In Progress
 
-- None. Stage-1 step 3 (re_observe / retry diagnostic recovery ladder) COMPLETE.
+- None. Stage-1 step 3 (re_observe / retry diagnostic recovery ladder) COMPLETE + report refreshed.
 
 ## Next Task
 
-- Re-run experiments/eval_reflection.py under the ladder + refresh Doc/phase3-reflection-report.md numbers (persistent detection now structural; 3/5 -> ~5/5). Then pick: remaining 1b maturity (ammo-bounds/death), or architecture diagram as an image for the README.
+- Pick: remaining 1b maturity (ammo-bounds/death), or architecture diagram as an image for the README.
+- Later / separate experiment: budget-robustness sweep (max_reobserves/max_retries = 2/1, 3/1, 2/2) — recovery rate vs cost/latency/false-alarm. Pre-declare budgets; do NOT mix into a report refresh.
 
 ## Deferred / Later
 
