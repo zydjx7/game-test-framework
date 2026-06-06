@@ -269,13 +269,18 @@
   - perception was STILL mislabelled "execution" by the LLM yet recovered -> perception-vs-execution accuracy STILL NOT claimed (ADR-0003/0004 honesty intact).
   - Doc/phase3-reflection-report.md rewritten (dated 2026-06-06, supersedes the 2026-06-03 table-based run). Budget sweep (2/1, 3/1, 2/2) deliberately NOT done here -> it is a separate robustness experiment, kept out of this report-refresh commit to avoid scope creep.
 
+- [Claude] 2026-06-06 shared: README architecture upgraded to Mermaid + figures refreshed -> `5194d2f`
+  - README.md + README.zh-CN.md: ASCII architecture replaced with a colour-coded Mermaid flowchart (renders natively on GitHub) — agent layer (LangGraph observe->decide->act->check + the diagnostic recovery ladder) + adapter layer (Env/State, Perceptor, Action library), ViZDoom + ToyFPS impls.
+  - Refreshed staleness surfaced while packaging: tests badge + counts 110 -> 117; "why interesting" reflection bullet + Phase 3 status row now describe the LADDER (persistent 5/5 vs baseline 0/5), not the old classify-then-retry.
+  - Mermaid edit guidance: keep accurate to agent/graph.py (ladder, NOT label-driven routing) + the honest boundary; avoid HTML entities like &nbsp; in node labels (use plain spaces), only <br/> is relied upon.
+
 ## Current In Progress
 
-- None. Stage-1 step 3 (re_observe / retry diagnostic recovery ladder) COMPLETE + report refreshed.
+- None. Stage-1 step 3 (recovery ladder) COMPLETE + report refreshed + README packaged (Mermaid).
 
 ## Next Task
 
-- Pick: remaining 1b maturity (ammo-bounds/death), or architecture diagram as an image for the README.
+- Pick: remaining 1b maturity (ammo-bounds/death). Optional packaging: a static PNG/SVG export of the architecture diagram for slides/CV (the README itself now renders Mermaid on GitHub, so this is only for non-GitHub use).
 - Later / separate experiment: budget-robustness sweep (max_reobserves/max_retries = 2/1, 3/1, 2/2) — recovery rate vs cost/latency/false-alarm. Pre-declare budgets; do NOT mix into a report refresh.
 
 ## Deferred / Later
