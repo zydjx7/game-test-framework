@@ -253,13 +253,23 @@
   - Timing is now explicit adapter contract: `health_gathering` health loss is polled every 32 tics with a 64-tic max window; `defend_the_center` health loss is documented as long-window/stochastic (~160-200 tics), not a precise one-step assertion.
   - Added `experiments/vizdoom/probe_timing.py` so future mechanics are calibrated before assertions are written. Verified unit suite and live ViZDoom smoke: health 92->84 in one agent step.
 
+- [Claude] 2026-06-06 feat: Stage-1 step 3 — separate re_observe / retry as a diagnostic recovery ladder
+  - agent/graph.py: the single `redo` node is replaced by a 2-rung ladder. anomaly -> reflect -> re_observe (rung1: re-perceive CURRENT state WITHOUT acting; rebuilds result via snapshot_result keeping <m>_before, refreshing <m>_after; does NOT advance steps; keeps original last_action) -> retry (rung2: re-run the action) -> report (suspected logic, on ladder exhaustion). route_recovery picks the next UNUSED rung; the LLM's perception/execution/logic diagnosis is RECORDED (cases + diagnosed_logic_by_llm) but does NOT steer routing — a bug is reported only on STRUCTURAL evidence (re_observe failed AND retry failed), never on a single pre-recovery LLM guess.
+  - Budgets max_reobserves / max_retries (default 1/1) are parameters, reset PER-ANOMALY on recovery — fixes the old global recovery_attempts that blocked recovering a 2nd anomaly. `max_recoveries` arg removed; run_reflective_agent / build_reflective_app signatures + experiments/eval_reflection.py updated (--max-reobserves / --max-retries).
+  - actions/composites.py + toy_fps/adapter.py: new `observe(perceptor) -> GameState` (exposes `_read`) = the read-only capability re_observe needs. Added to Doc/adapter-contract.md §4 contract surface.
+  - tests/test_graph.py rewritten for the ladder. Full suite 117 passed, 4 legacy deselected.
+  - LIVE smoke (experiments/smoke_recovery_ladder.py, real ViZDoom + real DeepSeek): perception fault -> recovered by re_observe ALONE (1 step, no extra shot) while the LLM MISLABELLED it "execution"; execution fault -> re_observe fails -> retry recovers (2 steps). Two paths differ, both recover. The mislabel-but-still-recovered case is direct live evidence the ladder does not depend on classification accuracy.
+  - Doc/adr/0004 added (closes ADR-0003's named future work); phase3-design.md recovery section + diagram updated table->ladder; README.md + README.zh-CN.md diagrams fixed (reflection was drawn as label-driven parallel branches; now the ladder).
+  - HONEST BOUNDARY — do NOT overclaim: we still do NOT claim accurate perception-vs-execution classification (ADR-0003/0004). The split's value is "if it IS perception, re_observe recovers without wasting an action"; the ladder disambiguates by recovery OUTCOME, not by the label.
+  - FOLLOW-UP (next commit): persistent faults now escalate to suspected-logic on ladder exhaustion instead of silently timing out -> Doc/phase3-reflection-report.md "persistent proposed 3/5" will rise toward 5/5; eval_reflection.py must be RE-RUN before that figure is re-cited. Budget tuning must be a pre-declared config, never per-case.
+
 ## Current In Progress
 
-- None. Stage 1 foundation COMPLETE (schema generalized + ToyFPS + adapter contract + README/demo). Collaboration infra added (reviews/, adr/, orientation).
+- None. Stage-1 step 3 (re_observe / retry diagnostic recovery ladder) COMPLETE.
 
 ## Next Task
 
-- Pick per priority: remaining 1b maturity (ammo-bounds/death), step 3 re_observe/retry split + recovery per-anomaly, or architecture diagram as an image for the README.
+- Re-run experiments/eval_reflection.py under the ladder + refresh Doc/phase3-reflection-report.md numbers (persistent detection now structural; 3/5 -> ~5/5). Then pick: remaining 1b maturity (ammo-bounds/death), or architecture diagram as an image for the README.
 
 ## Deferred / Later
 

@@ -51,9 +51,10 @@ logic) and either recovers or reports a bug.
    ┌───────────────────────── AGENT LAYER (game-agnostic, reused as-is) ─────────────────────────┐
    │  observe ─► decide ─► act ─► check ─┬─ success ─────────────► done                            │
    │   (VLM/GT) (function   (run   (expectation                                                     │
-   │            calling)   template)  met?)  └─ anomaly ─► reflect ─┬─ perception ─► re-observe     │
-   │                                                                ├─ execution  ─► retry         │
-   │                                                                └─ logic      ─► REPORT BUG    │
+   │            calling)   template)  met?)  └─ anomaly ─► reflect ─► re-observe ─► retry ─► BUG    │
+   │                                          (record 3-type        (rung 1:      (rung 2:  (ladder │
+   │                                           diagnosis;            re-read,      re-act)   spent ⇒ │
+   │                                           does NOT route)       no action)             logic)  │
    └────────────────────────────────────────────────────────────────────────────────────────────┘
                                    │  (LangGraph StateGraph)
    ┌───────────────────────── ADAPTER LAYER (per game) ─────────────────────────┐

@@ -103,9 +103,15 @@ The agent only ever touches these. Required surface:
 DESCRIPTIONS: dict[str, str]                 # template -> text shown to the LLM decider
 prim                                         # your Primitives instance (loop calls prim.reset())
 run(template_name, perceptor) -> result      # execute one template
+observe(perceptor) -> GameState              # re-perceive CURRENT state WITHOUT acting
 check_expectation(template_name, result) -> anomaly | None
 list_templates() -> list[str]                # the names in DESCRIPTIONS
 ```
+
+`observe(perceptor)` is the read half of a composite, exposed for the graph's
+`re_observe` recovery (a perception fault is fixed by reading again, not by
+re-running the action). Both reference adapters implement it as a one-liner
+`return self._read(perceptor)`.
 
 Each composite (template) does: read -> act -> read, and returns a result via
 `snapshot_result`:

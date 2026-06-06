@@ -34,6 +34,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# pytest caches + the conftest scratch dir (test artifacts, never committed)
+.pytest_cache/
+.pytest_tmp/
+
 # 注意：不再 ignore `env/`（曾经是 Python venv 约定，但与 Phase 0.2 ViZDoom 的
 # `env/` 目录冲突）。请用 `.venv/` 命名虚拟环境。
 

@@ -67,7 +67,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--max-steps", type=int, default=6)
-    parser.add_argument("--max-recoveries", type=int, default=2)
+    # Diagnostic recovery ladder budgets (Stage-1 step 3). Pre-declare these per
+    # experiment; do not tune per case. 1/1 is the minimal, cleanest ladder.
+    parser.add_argument("--max-reobserves", type=int, default=1)
+    parser.add_argument("--max-retries", type=int, default=1)
     args = parser.parse_args()
 
     decider = FixedDecider("fire_and_check_ammo")
@@ -89,7 +92,8 @@ def main() -> None:
                 lib_p, perc_p = make_components(env, condition)
                 p = run_reflective_agent(
                     GOAL, lib_p, perc_p, decider, reflector,
-                    max_steps=args.max_steps, max_recoveries=args.max_recoveries,
+                    max_steps=args.max_steps,
+                    max_reobserves=args.max_reobserves, max_retries=args.max_retries,
                 )
                 recovered = any(c.get("recovered") for c in p["cases"])
                 rows.append({

@@ -46,10 +46,10 @@ goals.feature --parse--> Goal（success = 对 cumulative state 的表达式）
                               |       |
                               |       +-- success -> done
                               |
-                              +-- anomaly -> reflect
-                                             |-- perception -> re-observe
-                                             |-- execution  -> retry
-                                             `-- logic      -> report bug
+                              +-- anomaly -> reflect（记录三类诊断，但不决定路由）
+                                             `-> re-observe -> retry -> report bug
+                                                 （阶梯1：    （阶梯2： （阶梯耗尽
+                                                  重读不动作） 重做动作） => 疑似 logic）
 
                 Adapter 层（每个游戏实现）
           Env/State(game_variables, screen?)

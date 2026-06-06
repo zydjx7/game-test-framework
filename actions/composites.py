@@ -130,6 +130,16 @@ class TestActions:
             raise ValueError(f"unknown test template: {template_name}")
         return getattr(self, template_name)(perceptor)
 
+    def observe(self, perceptor: GameStatePerceptor) -> GameState:
+        """Re-perceive the CURRENT state WITHOUT advancing the game.
+
+        Used by the graph's `re_observe` recovery (Stage-1 step 3): a perception
+        / transient-observation fault is recovered by reading again, not by
+        re-running the action. This is the read half of a composite, exposed.
+        """
+
+        return self._read(perceptor)
+
     @classmethod
     def list_templates(cls) -> List[str]:
         return [

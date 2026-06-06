@@ -33,10 +33,18 @@ class FailureType(Enum):
 - Per-action *expected effect* so the loop can detect an anomaly (a "failure").
 - `agent/reflection.py`: an LLM reflection step that classifies the anomaly
   into PERCEPTION / EXECUTION / LOGIC and proposes a recovery.
-- v1 recovery (one round, no learning):
-  - PERCEPTION → re-observe (and, if VLM, re-query / majority vote) once
-  - EXECUTION → retry the action once
-  - LOGIC → stop, mark as a suspected bug, emit a report; do NOT keep retrying
+- recovery — a DIAGNOSTIC LADDER (Stage-1 step 3, 2026-06-06; supersedes the
+  original "classify-then-look-up-a-recovery-table" v1). Because perception and
+  execution share the same observable at the anomaly (ADR-0003/0004), the LLM's
+  perception-vs-execution label does NOT pick the recovery; instead we escalate
+  through increasing-side-effect recoveries and let the OUTCOME disambiguate:
+  - re_observe (rung 1) → re-perceive the current state WITHOUT acting; fixes a
+    perception / transient-observation fault (zero side effects, no `steps`++).
+  - retry (rung 2) → re-run the action; an execution fault needs this.
+  - report (rung 3) → both failed → SUSPECTED logic. Reported on STRUCTURAL
+    evidence (re_observe failed AND retry failed), not on a single LLM guess.
+  - budgets `max_reobserves` / `max_retries` (default 1/1) are parameters, reset
+    per-anomaly. See `Doc/adr/0004-*.md`.
 - Failure-injection harness to create PERCEPTION and EXECUTION failures on
   demand (LOGIC failures come from Phase 4 mutations; for v1 a single hand-made
   logic stub is enough for one case study).
@@ -64,16 +72,19 @@ class FailureType(Enum):
 decide -> act -> check
                   |- success  -> END
                   |- continue -> decide
-                  '- anomaly   -> reflect
-                                    |- perception -> re_observe -> decide
-                                    |- execution  -> retry      -> check
-                                    '- logic      -> report     -> END
+                  |- report    -> END                  (anomaly survives, ladder spent)
+                  '- anomaly   -> reflect (record 3-type diagnosis)
+                                    |- re_observe -> check   (rung 1, no side effect)
+                                    '- retry      -> check   (rung 2)
 ```
 
 - Nodes: decide / act / reflect / re_observe / retry / report. Each is a plain
   Python function over a shared state dict (goal, history, cumulative,
-  last_result, failure_type, status, steps).
-- Conditional edges: after check (3-way) and after reflect (by failure_type).
+  last_result, last_failure_type, status, steps, reobserve_attempts,
+  retry_attempts).
+- Conditional edges: after check (route_anomaly: success / report / reflect /
+  continue / maxsteps) and after reflect (route_recovery: next unused ladder
+  rung). The LLM diagnosis is recorded but does not steer routing (step 3).
 - LangGraph orchestrates control flow ONLY; the DeepSeek calls stay in the
   reused decider/reflection code (LangGraph is used independently of LangChain).
 - Risk control: Stage 0 verifies `pip install langgraph` + a 3-node toy graph

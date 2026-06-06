@@ -14,3 +14,4 @@ to reverse — supersede with a new ADR instead.
 | [0001](0001-flat-result-schema.md) | Flat `<metric>_before/<metric>_after` result schema (not nested) |
 | [0002](0002-foundation-before-mcp.md) | Contract + ToyFPS foundation before MCP/RAG |
 | [0003](0003-logic-vs-nonlogic-boundary.md) | Failure taxonomy's core boundary is logic vs non-logic |
+| [0004](0004-diagnostic-recovery-ladder.md) | Recovery is a diagnostic ladder (re_observe→retry→report), not a classification-driven table |

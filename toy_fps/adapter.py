@@ -94,6 +94,11 @@ class ToyActions:
             raise ValueError(f"unknown test template: {template_name}")
         return getattr(self, template_name)(perceptor)
 
+    def observe(self, perceptor: GameStatePerceptor):
+        """Re-perceive current state without acting (graph re_observe recovery)."""
+
+        return self._read(perceptor)
+
     @classmethod
     def list_templates(cls) -> List[str]:
         return list(cls.DESCRIPTIONS.keys())
