@@ -11,15 +11,52 @@ in order, then run the Start-of-Task Checklist:
 
 1. **This file (`AGENTS.md`)** — collaboration rules + decision-persistence.
 2. **`WORKLOG.md`** — `## Current In Progress` / `## Next Task` / `## Deferred`.
-3. **`Doc/research-plan.md`** — the authoritative 5-phase plan + invariants.
-4. **`Doc/adr/README.md`** — key long-lived decisions (esp. ADR-0001 result
+3. **`Doc/project-direction.md`** — the authoritative GO-FORWARD direction
+   (GameTest Agent System / Unity track): north star, Gates 0–5, hard rules,
+   reused-vs-new boundary. Read before any v2 decision.
+4. **`Doc/research-plan.md`** — the ViZDoom-track master plan (Phases 0–3.5,
+   **DONE**). Authoritative for the completed v1 design + invariants it records;
+   **NOT** the forward direction (that is `project-direction.md`).
+5. **`Doc/adr/README.md`** — key long-lived decisions (esp. ADR-0001 result
    schema, ADR-0003 failure-taxonomy boundary).
-5. **Task-specific**: `Doc/adapter-contract.md` (adding a game),
-   `Doc/phase{N}-design.md` (a phase), `Doc/v2-roadmap.md` (extensions),
+6. **Task-specific**: `Doc/adapter-contract.md` (adding a game / the runtime
+   bridge spec), `Doc/phase{N}-design.md` (a v1 phase),
    `Doc/reviews/` (prior cross-agent reviews).
 
 `CLAUDE.md` (user + project) already routes a new Claude chat here; this list
 makes "what to read" explicit so onboarding does not depend on guessing.
+
+## Current Direction & Hard Rules (GameTest Agent System / Unity track)
+
+Forward-authoritative detail: `Doc/project-direction.md`. Summary every agent must
+honour on this track:
+
+**Cardinal rule — live-smoke first.** The ViZDoom track stayed honest because every
+change was machine-verifiable (`python -m pytest` + a runnable demo). Unity hides
+failures in editor/scene/prefab state. So: **no Unity change is "done" without a
+command-line PlayMode test or a smoke script that prints PASS/FAIL.** Unity's
+`pytest` equivalent:
+`Unity -runTests -batchmode -projectPath <proj> -testPlatform PlayMode -testResults results.xml`.
+
+**Build order — Gates (do not start Gate N+1 before Gate N passes).**
+0 trivial-mechanic Unity PlayMode smoke (prove the pipeline) → 1 checkpoint-softlock
+fixture + injected bug → 2 Python runtime bridge (no-LLM) → 3 Gameplay Agent reports
+`progression_softlock` → 4 Spec-to-Test (Test Plan IR + templates) → 5 VLM visual
+evidence.
+
+**Hard rules (do not violate):**
+
+1. Never add a feature before the Unity live-smoke passes.
+2. Never claim a Unity change works without a PlayMode test / smoke PASS-FAIL.
+3. No multi-agent orchestration before checkpoint softlock runs end-to-end (Gate 3).
+4. VLM is visual evidence beside `debug_state`, never the sole oracle.
+5. No coverage / mutation before the first vertical slice (Gate 3) is stable.
+6. Keep the ViZDoom v1 project GREEN and untouched — reused Python core + the
+   portability proof.
+7. The runtime bridge implements `Doc/adapter-contract.md`; editor MCP / automation
+   is authoring only, never the runtime oracle.
+8. Do not pre-write specs/code for a later Gate (e.g. bridge protocol detail at
+   Gate 2, not now) — the same "don't pre-build" discipline that served v1.
 
 ## Worktree Layout
 
@@ -112,9 +149,15 @@ Two more shared surfaces, for things the three tiers above don't fit well:
 
 ## Architecture of Record
 
-`Doc/research-plan.md` is the authoritative 5-Phase research plan for this
-project. It defines the phase structure, module ownership, design invariants,
-"do not do X" lists, and anticipated defense Q&A.
+**Forward direction (2026-06-10 →): `Doc/project-direction.md`** is authoritative
+for where the project is GOING (GameTest Agent System / Unity track): north star,
+Gates 0–5, hard rules, reused-vs-new boundary. Read it before any v2 architectural
+decision.
+
+`Doc/research-plan.md` is the ViZDoom-track master plan (Phases 0–3.5, **DONE**). It
+remains authoritative for the completed v1 design, module ownership, and invariants
+it documents — but it is **not** the forward plan. It defines the v1 phase structure,
+module ownership, design invariants, "do not do X" lists, and anticipated defense Q&A.
 
 Rules:
 

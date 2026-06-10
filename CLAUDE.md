@@ -3,152 +3,128 @@
 ## 项目身份
 
 研究方向：基于 LLM Agent 的游戏自动化测试框架。
-起源：本科论文 (RiverGame extension on AssaultCube) → 硕士扩展。
-当前状态：从 AssaultCube 静态截图测试迁移到 **ViZDoom 动态 agent loop**。
+起源：本科 (RiverGame on AssaultCube) → 硕士 ViZDoom agent loop → **当前：转向真引擎 (Unity) 的 gameplay regression 测试**。
 
-## 5 Phase 全貌
+**当前方向（2026-06 起 / forward 权威文档 → `Doc/project-direction.md`）**：
+GameTest Agent System —— 复用已建的 Python agent core，把测试目标从 ViZDoom 的
+toy 机制 (ammo/health) 升级到真实引擎里的**集成层 / 呈现层 / 进度 softlock** bug
+（单元测试天然漏掉、需要玩家可见 oracle 的那类）。
+ViZDoom 轨迹 (Phases 0–3.5) **已完成、117 tests green、保留为 Python core + 可移植性 baseline**。
 
-| Phase | 月份 | 核心目标 |
-|---|---|---|
-| **0**（当前）| M1 | 重构 + ViZDoom 环境就绪 |
-| 1 | M2-3 | Perception（VLM + Ground Truth 对比） |
-| 2 | M4-5 | Action Executor + Goal-level Gherkin + 最小 agent loop |
-| 3 | M6-7 | Reflection（三类 failure 分类与恢复） |
-| 4 | M8-9 | LLM Oracle + Mutation Testing |
-| 5 | M10+ | 论文 + 求职 |
+> 决策前必读：`Doc/project-direction.md`（go-forward 权威）。`Doc/research-plan.md`
+> 是 ViZDoom 轨迹的历史 master plan（已完成部分 + v1 不变量），**不再是 forward direction**。
 
-跨 Phase 提前讨论某模块细节会让用户失焦。**提到未来 Phase 时给一句话点位即可，不要展开**。
-完整 Phase 内容看 → `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md`
+## 一句话北极星
 
-## 当前阶段：Phase 0
+> 在真实引擎里，从需求生成分层测试，跑出真实 gameplay bug（尤其单元测试漏掉的
+> 呈现层 / 进度 softlock bug），拿到 screenshot + trace + debug_state，生成开发者
+> 可复现的报告。
 
-**目标**：
-1. 完成原 AssaultCube 项目的模块化重构（perception 接口抽出）
-2. 在 sandbox（沙盒环境）中验证 ViZDoom 可以跑通
+## 铁律：live-smoke 优先（最重要）
 
-**Phase 0 完成定义**：
-- ✅ AssaultCube baseline 测试仍能跑通（不被改坏） — Phase 0.1 已验证 `python -m pytest`: 24 passed + 4 legacy
-- 🟡 ViZDoom hello world 能产出 ammo trajectory（轨迹）+ 截图数据集 — sandbox 已做到 Step 2.4，待 Phase 0.2 迁入 `env/`
-- ✅ 主项目 perception 接口就位：`perception/` 目录新增 `GameStatePerceptor` ABC + `CVPerceptor` 包装层（Phase 0.1）
+ViZDoom 轨迹能成，是因为每步可验证：改 → `python -m pytest` → 跑 demo → 读
+trace/state → **知道 AI 写的东西是否真的工作**。Unity 会削弱这个循环（故障藏在
+editor/scene/prefab 状态里，AI 看不全、初学者难 debug）。所以：
 
-具体步骤看 → `F:\OBSIDIAN\Obsidian Vault\论文\ViZDoom-hello-world-两天路线.md`
+> **任何 Unity 改动，不经过机器可判定的 PASS 不算完成。** Unity 版 `pytest` 是命令行
+> PlayMode runner：
+> `Unity -runTests -batchmode -projectPath <proj> -testPlatform PlayMode -testResults results.xml`
+> 不能被 PlayMode test / smoke 脚本（写 PASS/FAIL）确认的改动，就是没做完。
 
-## 当前阻塞 / 依赖
+## 当前 Gate（详见 `Doc/project-direction.md`，不要 start Gate N+1 前先过 Gate N）
 
-- **没有 hard blocker（硬阻塞）**。研究室文化是"看成果给建议"，不在每个决策上等老师。
-- 进行中：ViZDoom sandbox 验证（已到 Step 2.1+）+ 主项目安全重构 **并行推进**
+- **Gate 0**（现在）：Unity MiniFPS + 一个**琐碎**机制（开关门）+ 命令行 PlayMode test +
+  导出 debug_state/screenshot。判据：不开 Editor 也能从命令行知道 pass/fail。无 agent / 无 VLM / 无 bridge。
+- Gate 1：checkpoint softlock fixture + 注入 door-not-persisted bug。
+- Gate 2：Python runtime bridge（reset/action/observe/...），no-LLM 跑通。
+- Gate 3：Gameplay Agent（复用 v1 core）接入，报 progression_softlock。
+- Gate 4：Spec-to-Test Agent（先 Test Plan IR + 模板，不直接 LLM 生成 C#）。
+- Gate 5：VLM 作视觉证据（不单独定罪）。
 
-## 目标架构（基于既有重构状态）
+## AI 硬规则（Claude Code / Codex 都遵守，详见 `Doc/project-direction.md`）
 
-**项目已经过一轮重构**（详见 `F:\OBSIDIAN\Obsidian Vault\论文\目前已进行的重构及项目状况.md`）：
-- `Code/bdd/` = bdd_runner 角色（DeepSeek + behave 主流程，已跑通）
-- `Code/bdd/test_generator/` = gherkin_generator 角色
-- `Code/bdd/features/steps/` = assertion 角色
-- `Code/GameStateChecker/` = CV 感知（待 Phase 0.1 包装）
-- `src/llm/client_helpers.py` = DeepSeek 共享层（已统一）
-- `src/gherkin/` = Gherkin parser
-- `src/rivergame/` = legacy，不动
-- `tests/` = pytest（legacy 标记已分离）
+1. Unity live-smoke 没过，不加新功能。
+2. 没有 PlayMode test / smoke 写 PASS/FAIL，不声称 Unity 改动可用。
+3. checkpoint softlock 端到端（Gate 3）跑通前，不做 multi-agent 编排。
+4. VLM 不当唯一 oracle，只当 debug_state 旁边的视觉证据。
+5. 第一条 vertical slice（Gate 3）稳定前，不碰 coverage / mutation。
+6. **ViZDoom v1 项目保持 green、不动**——复用的 Python core + 可移植性证据。
+7. runtime bridge 实现 `Doc/adapter-contract.md`；editor MCP 只管 authoring，绝不当 runtime oracle。
+8. 不为后续 Gate 预写 spec/代码（如 bridge 协议在 Gate 2 才写）——沿用 v1 "不预建"纪律。
 
-**因此不需要建 gherkin_generator/ bdd_runner/ assertion/ 新目录**。既有 Code/ 结构功能上就是它们。
+## 复用资产（v1 → 保持 green，不重写）
 
-### 现状（Phase 0.1 末）
+- `agent/` —— loop / goal (goal-level Gherkin) / reflection / graph (LangGraph) / recovery ladder
+- `perception/` —— GroundTruthPerceptor + VLMPerceptor (Qwen3-VL-Flash)
+- `actions/result.py` —— flat `<metric>_before/_after` schema
+- `Doc/adapter-contract.md` —— runtime bridge 规格
+- ViZDoom + ToyFPS adapters + tests —— 可移植性证据
 
-```
-F:\game-testing-main\
-├── Code/                既有 AssaultCube baseline（永不动）
-├── src/                 既有共享层 + legacy（永不动）
-├── tests/               pytest，持续维护
-├── scripts/             冒烟测试和实用脚本（Phase 0.1 新增）
-├── perception/          ⭐ Phase 0.1 新增 — 统一感知接口
-│   ├── base.py          ✅ GameStatePerceptor ABC + GameState dataclass
-│   ├── cv_perceptor.py  ✅ 包装 Code/GameStateChecker/LogicLayer
-│   └── __init__.py
-├── Doc/                 文档目录
-├── AGENTS.md            多 agent 协作协议（Codex 起草）
-├── WORKLOG.md           人类可读的协作日志
-└── CLAUDE.md            本文件
-```
+## 三个新意点（防伪，任何"重设计"必须保留）
 
-### Phase 渐进新增（**不预建空目录**）
-
-| Phase | 新建目录 / 文件 | 既有目录扩充 |
-|---|---|---|
-| 0.2 (M1) | `env/`（ViZDoom wrapper，从 sandbox 迁入）；`experiments/vizdoom/`（hello-world 脚本） | — |
-| 1 (M2-3) | `experiments/`（评估脚本） | `perception/` 加 `ground_truth.py` + `vlm_perceptor.py` |
-| 2 (M4-5) | `actions/`（primitives + composites）；`agent/loop.py` | — |
-| 3 (M6-7) | — | `agent/` 加 `reflection.py` + `memory.py`；`experiments/` 加评估脚本 |
-| 4 (M8-9) | `oracle/`（monitors + llm_oracle） | `env/scenarios/mutations/` 加 mutated .wad 文件 |
-
-### 架构演进原则（重要 — 防止 AI 自作主张）
-
-1. **`Code/` 和 `src/` 永远不动**。本科 baseline 是论文 Section IV 的对比基础，重命名/迁移/"清理"会破坏 baseline 的可比性
-2. **每个 Phase 只新建该 Phase 需要的目录**，不要预建 `actions/` / `agent/` / `oracle/` 等空目录"占位"。空目录污染仓库 + 让人误以为已有实现
-3. **概念上的 6 个顶层模块**（`perception/` / `env/` / `actions/` / `agent/` / `oracle/` / `experiments/`）是**终态**，不是 Phase 0 起点。Phase 0.1 只有 `perception/`，Phase 0.2 新增 `env/` 和 `experiments/vizdoom/`
-4. **已有目录由后续 Phase 在其中加文件**（如 Phase 1 在 `perception/` 加新 perceptor 文件），不要重建同名目录
-5. **如果某个 Phase 觉得"应该顺便建另一个目录"**，那是 scope creep 信号，停下来反思
+仍然是：(1) Goal-level Gherkin (2) failure 反思 + 诊断恢复 ladder (3) 注入 bug 评估 + 报告 oracle。
+v2 落地：(1) Gate 3 的 goal；(2) 复用 reflection/recovery，新增 progression_softlock 类；
+(3) Gate 1 注入 door-not-persisted bug 当 mutation，Gate 3/5 bug report + VLM 证据当 oracle。
 
 ## 关键设计决定（不要回退）
 
-- **DeepSeek 是唯一 LLM provider**。代码用 OpenAI-compatible SDK 接 DeepSeek。不要重新引入 OpenAI 分支。配置入口：`src/llm/client_helpers.py`
-- **ViZDoom 是主平台**，AssaultCube 降级为论文 baseline。不要把 AssaultCube 当主线开发。
-- **Ground truth 用 ViZDoom 的 `state.game_variables`**，不要再用 OCR 做 ammo 识别。
-- **Gherkin 从"步骤描述"升级为"目标描述"**。`weapon_steps.py` 那种逐步 step function 是 legacy。
-- **保留模块解耦**：perception / actions / agent / oracle 必须能独立测试。
+- **DeepSeek 是唯一 LLM provider**。OpenAI-compatible SDK 接 DeepSeek。配置入口：`src/llm/client_helpers.py`
+- **Ground truth 来自引擎内部状态**（ViZDoom `game_variables` / Unity debug_state exporter），不用 OCR。
+- **Gherkin 是"目标描述"不是"步骤描述"**。
+- **perception / actions / agent / oracle 解耦，能独立测试。**
+- **runtime bridge ≠ editor MCP**（见硬规则 7）。
 
 ## 关键规划文档（决策前先读）
 
 | 文档 | 内容 |
 |---|---|
-| `Doc/research-plan.md` ⭐ **权威版** | 5 个 Phase 的完整 master plan（git 仓库内） |
-| `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md` | Obsidian 镜像（用户阅读用，非权威；AI 不要改这个） |
-| `F:\OBSIDIAN\Obsidian Vault\论文\ViZDoom-hello-world-两天路线.md` | 当前 sprint 的具体步骤（仍在 Obsidian） |
-| `F:\OBSIDIAN\Obsidian Vault\论文\项目架构.md` | 旧（AssaultCube）状态，参考用 |
-| `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想.md` | 旧 Phase 规划（AssaultCube 版本），已被 ViZDoom 版替代 |
+| `Doc/project-direction.md` ⭐ **forward 权威** | GameTest Agent System 方向 + Gate 0–5 + 硬规则 |
+| `Doc/adapter-contract.md` | runtime bridge 规格（新游戏要实现的接口） |
+| `Doc/research-plan.md` | ViZDoom 轨迹 master plan（Phases 0–3.5 已完成；v1 不变量 + baseline） |
+| `Doc/adr/README.md` | 长期决策（ADR-0001 result schema / 0003 failure 边界 等） |
 
 ## 项目路径约定
 
 | 路径 | 用途 |
 |---|---|
-| `F:\game-testing-main\` | 主项目代码（重构后的目标态）|
-| `F:\vizdoom-sandbox\` | Phase 0.2 验证沙盒，**独立环境**，验证完前不要混入主项目 |
-| `F:\OBSIDIAN\Obsidian Vault\论文\` | 规划文档、笔记、汇报草稿。**不放代码** |
-| `Code/`（项目内）| 本科 AssaultCube 代码，作为论文 Section IV baseline 保留 |
-| 实验产物（CSV / screenshots / demo 视频）| Phase 0 期间先放沙盒，Phase 0 结束后迁入主项目 `experiments/` |
+| `F:\game-testing-main\` | 主项目（Python agent core + 适配器 + 文档） |
+| `Code/` / `src/rivergame/` | 本科 AssaultCube/RiverGame baseline，**永不动** |
+| `env/` `agent/` `actions/` `perception/` `toy_fps/` | v1 已建、复用、**保持 green** |
+| Unity 项目 | v2 新增（位置在 Gate 0 落地时定，建议仓库内 `unity/` 子目录或并列） |
+| `F:\OBSIDIAN\Obsidian Vault\论文\` | 规划/笔记/汇报草稿，**不放代码**；AI 不改 Obsidian |
 
-## ViZDoom 关键技术事实（避免 LLM 幻觉）
+## ViZDoom 关键技术事实（v1 core 仍在用，避免 LLM 幻觉）
 
-- `state.screen_buffer` 是 **(C, H, W)** 通道在前，不是 OpenCV/PIL 的 (H, W, C)。存图要 `np.transpose(buf, (1, 2, 0))`
-- `state.game_variables` 是 numpy array，按 `.cfg` 里 `available_game_variables` 的**位置顺序**索引，没有 dict 形式
-- 没有 `game.is_alive()`，要从 `game.is_episode_finished()` + game_variables 自己推断
-- Windows 装不上时 80% 是缺 Microsoft Visual C++ 2015-2022 Redistributable
-- 稳定版本组合：ViZDoom 1.2.x + Python 3.10-3.12
+- `state.screen_buffer` 是 (C, H, W)，存图要 `np.transpose(buf, (1,2,0))`
+- `state.game_variables` 是 numpy array，按 `.cfg` 位置顺序索引，没有 dict 形式
+- 没有 `game.is_alive()`，从 `is_episode_finished()` + game_variables 推断
+- Windows 装不上 80% 是缺 Microsoft Visual C++ 2015-2022 Redistributable
+- 稳定组合：ViZDoom 1.2.x + Python 3.10-3.12
 
 ## 法律/职业红线（绝不写代码）
 
-- **不为任何商业游戏写 Memory Hook / Input Hook / API Hook 代码**。反外挂、反作弊法规在中国就业语境敏感，简历有这类代码会被嫌弃
-- bug 注入只在 ViZDoom 的 ACS 脚本（Doom 的内置脚本语言）或自建 scenario（场景配置）里做，不动商业游戏
-- 即使是 AssaultCube 这种开源游戏，也只走"改源码 + 重新编译"的合法路径，不走 hook
+- **不为任何商业游戏写 Memory Hook / Input Hook / API Hook 代码**。反作弊语境在中国就业敏感，简历有这类代码会被嫌弃。
+- bug 注入只在**自建** scenario / **自建** Unity 项目里做（改自己源码 + 重新编译的合法路径），不动商业游戏、不走 hook。
+- Unity 测试目标是**自己搭的 MiniFPS / 自己改的开源模板**，不 reverse engineer 任何商业游戏。
 
 ## 验证命令
 
 ```powershell
-# 当前 AssaultCube baseline（保留）
+# v1 Python core（保持 green）
 python -m pytest
-python Code\bdd\run_tests.py --mode predefined --feature generated_test.feature --target assaultcube
-
-# Phase 0.2 ViZDoom wrapper smoke
-python env\vizdoom_env.py
 python experiments\vizdoom\hello_doom.py
-python experiments\vizdoom\generate_trajectory.py
+python experiments\toy_fps_demo.py
+
+# v2 Unity（Gate 0 落地后）
+# Unity -runTests -batchmode -projectPath <proj> -testPlatform PlayMode -testResults results.xml
+# python scripts\unity_smoke.py   # Gate 2 起
 ```
 
 ## 行为约定（给我自己看的）
 
-0. **多 agent 协作**：开始新任务前先读 `AGENTS.md` 和 `WORKLOG.md`，并按其中的 fetch / rebase / push 协议执行。涉及共享文件（`README.md`、`.gitignore`、`requirements.txt`、`pytest.ini`、`CLAUDE.md`、`AGENTS.md`、`WORKLOG.md`）时，commit message 用 `shared:` 前缀。
-
-1. **学习标签**：每次产出实质性代码 / 设计 / 决策后，附 🎓 学习标签（见 ~/.claude/CLAUDE.md）。Plumbing 类操作（移文件、pip install）可省略。
-2. **决策前看规划文档**：用户对计划文档投入了大量思考，不要忽视它们另起炉灶。
-3. **新意点防伪**：用户研究的差异化点是 (1) Goal-level Gherkin (2) 三类 failure 反思 (3) Mutation Testing + LLM Oracle。任何"重新设计架构"的建议必须保留这三点。
-4. **不要扩 scope**：用户基础有限 + 无 DDL，最大风险是 scope creep。看到"顺便加个 X"的冲动先停一下。
-5. **legacy 谨慎处理**：`Code/` 目录下 AssaultCube 代码是本科产物，不要"清理"它，作为 baseline 保留。
+0. **多 agent 协作**：开工前读 `AGENTS.md` + `WORKLOG.md`，按 fetch/rebase/push 协议执行。共享文件（README/.gitignore/requirements/pytest.ini/CLAUDE.md/AGENTS.md/WORKLOG.md）commit 用 `shared:` 前缀。
+1. **学习标签**：每次产出实质代码/设计/决策后附 🎓 学习标签（见 ~/.claude/CLAUDE.md）。Plumbing 可省。
+2. **决策前看 `Doc/project-direction.md`**，不要忽视它另起炉灶。
+3. **新意点防伪**：见上"三个新意点"段，任何"重设计"必须保留那三点。
+4. **不要扩 scope**：用户基础有限 + 无 DDL，最大风险是 scope creep + "设计跑在执行前面"。守 Gate 纪律 + live-smoke 优先。
+5. **legacy 谨慎**：`Code/` / `src/rivergame/` 是本科产物，不"清理"，作 baseline 保留。

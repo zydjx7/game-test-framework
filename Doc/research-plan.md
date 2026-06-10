@@ -1,5 +1,11 @@
 # 扩展构想 - ViZDoom 路线版（v2.0）
 
+> ⚠️ **SUPERSEDED AS FORWARD DIRECTION (2026-06-10).** 项目转向 **GameTest Agent
+> System（real-engine / Unity track）**——forward 权威计划现在是
+> `Doc/project-direction.md`。本文件记录的是 ViZDoom 轨迹（Phases 0–3.5，**已完成**，
+> 117 tests green），保留为：复用的 Python agent core 来源 + 可移植性 baseline + 它
+> 所记录的 v1 设计不变量的权威。**不要**把它的 Phase 4+ 当作当前计划；**不要**删除它。
+
 > **Authoritative location**: 本文件以 `Doc/research-plan.md`（git 仓库内）为准。
 > 修改后用户会手动同步到 Obsidian 镜像（`F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md`，用户阅读用，方向是 repo → Obsidian）。
 > AI agent 不要修改 Obsidian 那份；要改请改 `Doc/research-plan.md`，commit message 用 `shared:` 前缀。

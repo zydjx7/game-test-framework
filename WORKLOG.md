@@ -274,14 +274,32 @@
   - Refreshed staleness surfaced while packaging: tests badge + counts 110 -> 117; "why interesting" reflection bullet + Phase 3 status row now describe the LADDER (persistent 5/5 vs baseline 0/5), not the old classify-then-retry.
   - Mermaid edit guidance: keep accurate to agent/graph.py (ladder, NOT label-driven routing) + the honest boundary; avoid HTML entities like &nbsp; in node labels (use plain spaces), only <br/> is relied upon.
 
+- [Claude] 2026-06-10 shared: PIVOT — project direction → GameTest Agent System (real-engine / Unity track)
+  - Decision (user-driven, after a long feasibility discussion): the ViZDoom track (Phases 0–3.5, DONE, 117 green) proved the AGENT CORE but its toy targets (ammo/health) lack industrial value (= 3-line unit tests in a real engine). The project's TARGET moves to a real engine (Unity): integration / presentation / progression-softlock bugs that need a player-visible oracle. The agent core is REUSED, not rewritten.
+  - NEW forward-authoritative doc: `Doc/project-direction.md` (north star, Gates 0–5, hard rules, reused/new/deferred, runtime-bridge≠editor-MCP boundary). `Doc/research-plan.md` is now the v1/ViZDoom history (DONE) + baseline, NOT the forward plan. AGENTS.md Orientation + Architecture-of-Record + a new "Current Direction & Hard Rules" section updated. CLAUDE.md fully refreshed (was stale at "Phase 0" — that staleness misled an agent; root cause fixed). research-plan.md got a SUPERSEDED banner.
+  - CARDINAL RULE: live-smoke first. Unity's `pytest` is `Unity -runTests -batchmode -testPlatform PlayMode`. No Unity change is "done" without a machine-checkable PASS.
+  - HARD RULES (do not violate): (1) no feature before Unity live-smoke passes; (2) no "it works" claim without a PlayMode test / smoke PASS-FAIL; (3) no multi-agent orchestration before checkpoint softlock end-to-end (Gate 3); (4) VLM = visual evidence, never sole oracle; (5) no coverage/mutation before Gate 3 stable; (6) ViZDoom v1 stays GREEN and untouched (reused core + portability proof); (7) runtime bridge implements adapter-contract, editor MCP is authoring only; (8) no pre-writing later-Gate specs/code.
+  - BUILD ORDER (Gates, do NOT skip): 0 trivial-mechanic Unity PlayMode smoke (prove pipeline) → 1 checkpoint-softlock fixture + injected door-not-persisted bug → 2 Python runtime bridge (no-LLM) → 3 Gameplay Agent reports progression_softlock → 4 Spec-to-Test (Test Plan IR + templates) → 5 VLM visual evidence.
+  - Three differentiators PRESERVED/reframed: goal-level Gherkin (Gate 3 goal), failure reflection + recovery ladder (+ progression_softlock class), injected-bug eval + report oracle (Gate 1 mutation, Gate 3/5 report+VLM).
+
 ## Current In Progress
 
-- None. Stage-1 step 3 (recovery ladder) COMPLETE + report refreshed + README packaged (Mermaid).
+- Direction pivot landed in docs (see 2026-06-10 entry). NEXT CODE STEP = Gate 0:
+  stand up a Unity MiniFPS + ONE trivial mechanic (door open/close) + a command-line
+  PlayMode test + debug_state/screenshot export. Gate 0's only job is to prove the
+  Unity→test→state pipeline is command-line verifiable. No agent / no VLM / no bridge yet.
 
 ## Next Task
 
-- Pick: remaining 1b maturity (ammo-bounds/death). Optional packaging: a static PNG/SVG export of the architecture diagram for slides/CV (the README itself now renders Mermaid on GitHub, so this is only for non-GitHub use).
-- Later / separate experiment: budget-robustness sweep (max_reobserves/max_retries = 2/1, 3/1, 2/2) — recovery rate vs cost/latency/false-alarm. Pre-declare budgets; do NOT mix into a report refresh.
+- Gate 0 (Unity verifiable env). Suggested first move: pull a Unity FPS Microgame /
+  minimal template, confirm it launches, add ONE door-state mechanic + a PlayMode test
+  runnable from the command line, export debug_state.json + a screenshot. Decide where
+  the Unity project lives (repo `unity/` subdir vs sibling). Establish the Unity
+  live-smoke command BEFORE any gameplay logic. PASS = you know test pass/fail from the
+  command line without clicking the Editor.
+- Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
+  priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
+  robustness sweep stays deferred.
 
 ## Deferred / Later
 

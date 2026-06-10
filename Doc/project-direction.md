@@ -1,0 +1,140 @@
+# GameTest Agent System — Project Direction (real-engine / Unity track)
+
+> **Forward-authoritative.** This supersedes `Doc/research-plan.md` as the project's
+> go-forward plan. `research-plan.md` (the ViZDoom track, Phases 0–3.5) is **DONE,
+> 117 tests green, and retained** as the source of the reused Python agent core +
+> the portability baseline — see "Reused assets". Do not delete it.
+>
+> Naming note: `research-plan.md` calls itself "v2.0" because it was the ViZDoom
+> rewrite of the old AssaultCube plan. That is a *different* "v2" from this pivot.
+> To avoid collision this document is named the **GameTest Agent System** direction,
+> not "v2".
+
+## Why the pivot (read first)
+
+The ViZDoom track (Phases 0–3.5, all DONE) proved the **agent core**:
+observe→decide→act→check loop, reflection + diagnostic recovery ladder, DeepSeek
+function-calling decider, goal-level Gherkin, GroundTruth-vs-VLM perception, a clean
+adapter contract, and a disciplined live-smoke habit.
+
+But its **test target** — `ammo -= 1` / `health -= n` on toy ViZDoom scenarios — has
+little industrial value: in a real engine those are three-line unit-test assertions.
+An LLM+VLM agent only earns its keep where unit tests **cannot** reach: integration,
+presentation, and progression-softlock bugs that appear only when real systems are
+wired together and that need a **player-visible oracle**.
+
+So we keep the agent core and move the target to a **real engine (Unity)**.
+
+## North star (one sentence)
+
+> In a real engine, generate layered tests from a requirement, run a real gameplay
+> bug — especially the presentation / progression-softlock bugs unit tests miss —
+> capture screenshot + trace + debug_state, and emit a developer-reproducible report.
+
+## Cardinal rule: live-smoke first (the most important line in this doc)
+
+The ViZDoom track succeeded because every change was verifiable: edit → `python -m
+pytest` → run demo → read trace/state → **KNOW whether the AI's code actually works**.
+Unity threatens that loop — failures hide in editor / scene / prefab state the AI
+can't fully see and a learner can't debug. Therefore:
+
+> **Nothing lands in Unity without a machine-checkable PASS.** Unity's `pytest`
+> equivalent is the command-line PlayMode runner:
+>
+> ```
+> Unity -runTests -batchmode -projectPath <proj> -testPlatform PlayMode -testResults results.xml
+> ```
+>
+> If a change cannot be confirmed by a PlayMode test or a smoke script that writes
+> PASS/FAIL, it is **not done**.
+
+## Reused assets (v1 → keep GREEN, do not rewrite)
+
+v2 reuses these; it does not touch them. They stay green as the portability proof:
+
+- `agent/` — loop, goal (goal-level Gherkin), reflection, graph (LangGraph),
+  diagnostic recovery ladder.
+- `perception/` — GroundTruthPerceptor, VLMPerceptor (Qwen3-VL-Flash backend).
+- `actions/result.py` — flat `<metric>_before/_after` schema + accumulate.
+- `Doc/adapter-contract.md` — the runtime-bridge spec a new game must implement.
+- ViZDoom + ToyFPS adapters + their tests.
+
+## New in v2 (build order = the Gates)
+
+- A **Unity runtime adapter** (Python ↔ *running* game) implementing the adapter
+  contract.
+- A **Unity MiniFPS** sandbox — a testable QA fixture, NOT a fun game.
+- **Presentation / progression** bug classes + **VLM as visual evidence** (not sole
+  oracle).
+- (later gates) **Spec-to-Test Agent**; **bug→regression** loop.
+
+## Runtime bridge ≠ editor MCP (do not conflate)
+
+Editor automation / MCP servers help **author** the game (create GameObjects, attach
+components, edit scenes). They are NOT the channel the *running* agent uses to act and
+observe. The Gameplay Agent needs a **runtime bridge**: reset / action / observe /
+debug_state / screenshot / trace against the LIVE game = `Doc/adapter-contract.md`
+implemented in C# + a thin RPC.
+
+- **Gates 0–1 are pure C# PlayMode tests — NO bridge** (they run inside Unity).
+- **The bridge appears at Gate 2.** Don't build it earlier; don't equate it with MCP.
+
+## Roadmap — Gates (do NOT start Gate N+1 before Gate N passes)
+
+| Gate | Deliverable | PASS criterion |
+|---|---|---|
+| **0** | Unity MiniFPS + a **trivial** mechanic (one door open/close) + a command-line PlayMode test + exported `debug_state.json` + screenshot | You know pass/fail **from the command line**, without clicking the Editor. Pipeline proven on a 1-system mechanic. |
+| **1** | Checkpoint-softlock fixture (player / keycard / door / checkpoint / death-respawn / objective / extraction) + a fixed-script PlayMode test | Normal build PASS; with injected `door-not-persisted` bug, FAIL. |
+| **2** | Python runtime bridge (`reset/action/observe/debug_state/screenshot/trace`) + `scripts/unity_smoke.py` | A **no-LLM** Python script drives the full checkpoint flow end-to-end and asserts state. (= adapter-contract realised in Unity.) |
+| **3** | Gameplay Agent (reuse v1 core) on a `gameplay_checkpoint_no_softlock` goal | Normal → agent reaches extraction; bug build → agent reports `progression_softlock` with screenshot + trace + debug_state. |
+| **4** | Spec-to-Test Agent: requirement → Test Plan IR → **templated** unit/PlayMode tests | From the checkpoint requirement it emits a layered plan and template-renders at least a **compilable** unit + PlayMode test. |
+| **5** | VLM as visual evidence | VLM answers structured questions (marker behind closed door? player view blocked?) appended as evidence — never the sole verdict. |
+
+**First valuable bug = checkpoint softlock (Gate 1+).** Gate 0's mechanic is
+deliberately trivial: its only job is to prove the Unity→test→state pipeline is real
+and command-line-controllable before any multi-system mechanic.
+
+## Deferred — do NOT start before its gate
+
+coverage / mutation / CI dashboard; Spec-to-Test free C# generation (templates first);
+multi-agent orchestration; RAG; the full 7-class failure taxonomy (the v1 honest
+boundary — logic vs non-logic — holds until richer mechanics force the split); MCP
+server; Unreal. (Absorbs the old `Doc/v2-roadmap.md` extension ladder.)
+
+## The three differentiators are PRESERVED (anti-forgery)
+
+1. **Goal-level Gherkin** → the Gate 3 goal file.
+2. **Failure reflection + diagnostic recovery** → reused ladder + a new
+   `progression_softlock` class.
+3. **Injected-bug evaluation + report oracle** → Gate 1 `door-not-persisted` bug as a
+   mutation; Gate 3/5 bug report + VLM evidence as the oracle.
+
+Any "redesign" proposal must keep these three.
+
+## Hard rules for any AI coding agent (Claude Code / Codex)
+
+1. **Never add a feature before the Unity live-smoke passes.**
+2. **Never claim a Unity change works without a PlayMode test or smoke script that
+   prints PASS/FAIL.** "It should work" is not done.
+3. **No multi-agent orchestration before checkpoint softlock runs end-to-end (Gate 3).**
+4. **VLM is visual evidence beside `debug_state`, never the sole oracle.**
+5. **No coverage / mutation before the first vertical slice (Gate 3) is stable.**
+6. **Keep the ViZDoom v1 project GREEN and untouched** — reused Python core +
+   portability proof.
+7. **The runtime bridge implements `Doc/adapter-contract.md`; editor MCP is authoring
+   only, never the runtime oracle.**
+8. **Do not pre-write specs/code for a later Gate** (e.g. bridge protocol detail at
+   Gate 2, not now) — the same "don't pre-build" discipline that served v1.
+
+## What success of the FIRST milestone looks like
+
+Not "the whole dual-agent system." One thread, end to end:
+
+```
+Unity scene → Python controls it → Agent executes the checkpoint goal →
+softlock bug detected → screenshot + debug_state + trace exported →
+report explains the softlock
+```
+
+Punch Gates 0–3 through and the project stands up. Until then, more agent design is
+just an architecture diagram.
