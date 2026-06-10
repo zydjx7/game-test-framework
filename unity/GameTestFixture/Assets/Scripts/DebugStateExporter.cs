@@ -45,5 +45,29 @@ namespace GameTestFixture
             File.WriteAllText(resolvedPath, JsonUtility.ToJson(snapshot, prettyPrint: true));
             return resolvedPath;
         }
+
+        public static string Export(CheckpointDebugState snapshot, string outputPath = null)
+        {
+            if (snapshot == null)
+            {
+                throw new ArgumentNullException(nameof(snapshot));
+            }
+
+            string resolvedPath = outputPath ?? DefaultOutputPath();
+            string directory = Path.GetDirectoryName(resolvedPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            if (string.IsNullOrEmpty(snapshot.scene))
+            {
+                snapshot.scene = SceneManager.GetActiveScene().name;
+            }
+
+            snapshot.timestamp = DateTimeOffset.UtcNow.ToString("O");
+            File.WriteAllText(resolvedPath, JsonUtility.ToJson(snapshot, prettyPrint: true));
+            return resolvedPath;
+        }
     }
 }

@@ -301,7 +301,13 @@
 
 ## Current In Progress
 
-- Direction pivot landed in docs (see 2026-06-10 entries). NEXT CODE STEP = Gate 0:
+- Gate 1 checkpoint-softlock fixture is complete. NEXT CODE STEP = Gate 2:
+  first write/read a Gate 2 design doc, then add the Python runtime bridge
+  (`reset/action/observe/debug_state/screenshot/trace`) plus `scripts/unity_smoke.py`.
+  Keep it no-LLM/no-agent: Gate 2 only proves Python can drive the checkpoint flow
+  end-to-end and assert Unity state from the command line.
+
+- Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
   mechanic (door open/close) + a command-line PlayMode test + debug_state.json export
   (screenshot best-effort). Gate 0's only job is to prove the Unity→test→state pipeline
@@ -357,6 +363,20 @@
   - Next MCP step is an isolated `codex/unity-mcp-eval` branch. Do not commit MCP
     package dependencies to `master` unless an evaluation branch proves the setup
     useful and `python scripts\run_unity_tests.py` stays green.
+
+- [Codex] 2026-06-10 shared: Gate 1 checkpoint-softlock fixture complete
+  - Added pure PlayMode/runtime fixture components for player state, keycard,
+    security door, checkpoint capture/restore, death-respawn, extraction, and
+    checkpoint debug-state export. The Gate 1 test constructs GameObjects
+    programmatically; no scene file, FPS template, bridge, agent, LLM, or VLM was
+    added.
+  - Verification: `python scripts\run_unity_tests.py` PASS (2 PlayMode tests);
+    required negative check with `GATE1_BUG_DOOR_NOT_PERSISTED=1` FAILS with
+    `progression_softlock`; env restored and final normal PASS rerun.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate1-v1`: 117 passed, 4 deselected.
+  - Next code step is Gate 2: design doc first, then a no-LLM Python runtime bridge
+    and `scripts/unity_smoke.py` against the same checkpoint flow.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
