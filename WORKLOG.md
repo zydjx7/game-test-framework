@@ -301,10 +301,10 @@
 
 ## Current In Progress
 
-- Gate 3 Gameplay Agent vertical slice is complete. NEXT CODE STEP = Gate 4:
-  first write/read a Gate 4 design doc, then add Spec-to-Test only as a
-  template-rendered Test Plan IR path for the checkpoint requirement. Do not
-  start VLM, coverage, mutation infrastructure, or multi-agent orchestration.
+- Gate 4 Spec-to-Test template slice is complete. NEXT CODE STEP = Gate 5:
+  first write/read a Gate 5 design doc, then add VLM visual evidence beside
+  `debug_state`/trace/screenshot. VLM must not become the sole oracle; do not
+  start coverage, mutation infrastructure, or bug-to-regression yet.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -408,6 +408,23 @@
     --basetemp .pytest_tmp\gate3-v1`: 117 passed, 4 deselected.
   - Next code step is Gate 4: design doc first; template-rendered Spec-to-Test
     only, no VLM/coverage/mutation/multi-agent work yet.
+
+- [Codex] 2026-06-11 shared: Gate 4 Spec-to-Test template slice complete
+  - Added `Doc/gate4-design.md`, checkpoint requirement text, `spec_to_test/`
+    Test Plan IR + deterministic planner + Unity renderer, and
+    `scripts/spec_to_test_smoke.py`. The generated C# tests are template-rendered
+    and committed with generated-file headers; no free-form C# generation, VLM,
+    coverage, mutation, or multi-agent orchestration was added.
+  - Verification: `python scripts\spec_to_test_smoke.py` PASS; it emits IR JSON,
+    renders a generated EditMode/component test and a generated PlayMode test,
+    then runs both through Unity CLI category `Gate4Generated`.
+  - Existing gate checks remain green: `python scripts\run_unity_tests.py` PASS
+    (4 PlayMode tests), `python scripts\unity_smoke.py` PASS, and
+    `python scripts\unity_agent_smoke.py` PASS.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate4-v1`: 117 passed, 4 deselected.
+  - Next code step is Gate 5: design doc first; VLM visual evidence only beside
+    existing state/trace/screenshot oracles.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-

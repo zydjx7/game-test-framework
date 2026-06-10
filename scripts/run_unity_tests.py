@@ -38,6 +38,17 @@ def parse_args() -> argparse.Namespace:
         default=str(DEFAULT_LOG),
         help="Unity Editor log output path.",
     )
+    parser.add_argument(
+        "--test-platform",
+        default="PlayMode",
+        choices=["PlayMode", "EditMode"],
+        help="Unity test platform. Defaults to PlayMode.",
+    )
+    parser.add_argument(
+        "--test-category",
+        default=None,
+        help="Optional Unity Test Framework category filter.",
+    )
     return parser.parse_args()
 
 
@@ -120,14 +131,16 @@ def main() -> int:
         "-projectPath",
         str(project_path),
         "-testPlatform",
-        "PlayMode",
+        args.test_platform,
         "-testResults",
         str(results_path),
         "-logFile",
         str(log_path),
     ]
+    if args.test_category:
+        command.extend(["-testCategory", args.test_category])
 
-    print("Running Unity PlayMode tests...")
+    print(f"Running Unity {args.test_platform} tests...")
     print(" ".join(command))
     completed = subprocess.run(command, check=False)
 
@@ -141,7 +154,7 @@ def main() -> int:
         print("FAIL Unity PlayMode suite failed.")
         return 1
 
-    print(f"PASS Unity PlayMode suite passed. Results: {results_path}")
+    print(f"PASS Unity {args.test_platform} suite passed. Results: {results_path}")
     return 0
 
 
