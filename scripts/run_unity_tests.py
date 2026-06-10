@@ -11,7 +11,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROJECT = REPO_ROOT / "unity" / "GameTestFixture"
-DEFAULT_UNITY_EXE = Path(r"E:\unity\2022.3.62f3c1\Editor\Unity.exe")
+DEFAULT_UNITY_EXE = Path(r"E:\unity\2022.3.12f1\Editor\Unity.exe")
 DEFAULT_RESULTS = REPO_ROOT / "results" / "unity" / "results.xml"
 DEFAULT_LOG = REPO_ROOT / "results" / "unity" / "unity.log"
 

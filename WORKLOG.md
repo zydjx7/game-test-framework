@@ -337,6 +337,18 @@
     117 passed, 4 deselected.
   - Next code step is Gate 1: start a Gate 1 design doc, then build the
     checkpoint-softlock fixture only after preserving Gate 0's live-smoke discipline.
+- [Codex] 2026-06-10 shared: retarget Gate 0 fixture to Unity 2022.3.12f1 for Hub compatibility
+  - `unity/GameTestFixture/ProjectSettings/ProjectVersion.txt` now pins
+    `2022.3.12f1 (4fe6e059c7ef)`, and `scripts/run_unity_tests.py` defaults to
+    `E:\unity\2022.3.12f1\Editor\Unity.exe`.
+  - Local machine note: the old `E:\unity\2022.3.12f1` editor install was missing
+    required Licensing/PackageManager resources and then crashed after mixed-file
+    repair attempts. It was backed up to
+    `E:\unity\2022.3.12f1-broken-backup-20260610-165437`, then replaced with a clean
+    2022.3.12f1 install that passed Gate 0 CLI smoke.
+  - Verification: `python scripts\run_unity_tests.py` PASS on the Hub-visible
+    2022.3.12f1 path; `.venv\Scripts\python.exe -m pytest --basetemp
+    .pytest_tmp\gate0-unity-2022-3-12f1` remains green (117 passed, 4 deselected).
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
