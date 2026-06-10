@@ -151,6 +151,7 @@ implemented in C# + a thin RPC.
 
 - **Gates 0–1 are pure C# PlayMode tests — NO bridge** (they run inside Unity).
 - **The bridge appears at Gate 2.** Don't build it earlier; don't equate it with MCP.
+- Operational rules for MCP-assisted authoring live in `Doc/unity-mcp-usage.md`.
 
 ## Roadmap — Gates (do NOT start Gate N+1 before Gate N passes)
 

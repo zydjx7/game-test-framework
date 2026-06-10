@@ -349,6 +349,14 @@
   - Verification: `python scripts\run_unity_tests.py` PASS on the Hub-visible
     2022.3.12f1 path; `.venv\Scripts\python.exe -m pytest --basetemp
     .pytest_tmp\gate0-unity-2022-3-12f1` remains green (117 passed, 4 deselected).
+- [Codex] 2026-06-10 shared: document Unity MCP usage boundaries
+  - Added `Doc/unity-mcp-usage.md` and linked it from `Doc/project-direction.md`.
+    MCP is recorded as an Editor authoring/helper path only; it must not replace
+    PlayMode CLI PASS/FAIL, the Gate 2 runtime bridge, `debug_state`, screenshots,
+    or traces.
+  - Next MCP step is an isolated `codex/unity-mcp-eval` branch. Do not commit MCP
+    package dependencies to `master` unless an evaluation branch proves the setup
+    useful and `python scripts\run_unity_tests.py` stays green.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
