@@ -1,4 +1,4 @@
-"""Run the Gate 0 Unity PlayMode smoke suite and print machine-readable verdicts."""
+"""Run the Unity PlayMode smoke suite and print machine-readable verdicts."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--unity",
         default=os.environ.get("UNITY_EXE", str(DEFAULT_UNITY_EXE)),
-        help="Path to Unity.exe. Defaults to UNITY_EXE or the Gate 0 pinned editor.",
+        help="Path to Unity.exe. Defaults to UNITY_EXE or the pinned editor.",
     )
     parser.add_argument(
         "--project",

@@ -301,11 +301,11 @@
 
 ## Current In Progress
 
-- Gate 1 checkpoint-softlock fixture is complete. NEXT CODE STEP = Gate 2:
-  first write/read a Gate 2 design doc, then add the Python runtime bridge
-  (`reset/action/observe/debug_state/screenshot/trace`) plus `scripts/unity_smoke.py`.
-  Keep it no-LLM/no-agent: Gate 2 only proves Python can drive the checkpoint flow
-  end-to-end and assert Unity state from the command line.
+- Gate 2 Python runtime bridge is complete. NEXT CODE STEP = Gate 3:
+  first write/read a Gate 3 design doc, then wrap the bridge with the reused v1
+  Gameplay Agent on a `gameplay_checkpoint_no_softlock` goal. Normal run must
+  reach extraction; bug run (`GATE1_BUG_DOOR_NOT_PERSISTED=1`) must report
+  `progression_softlock` with trace + debug_state + screenshot evidence.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -377,6 +377,21 @@
     --basetemp .pytest_tmp\gate1-v1`: 117 passed, 4 deselected.
   - Next code step is Gate 2: design doc first, then a no-LLM Python runtime bridge
     and `scripts/unity_smoke.py` against the same checkpoint flow.
+
+- [Codex] 2026-06-10 shared: Gate 2 Python runtime bridge complete
+  - Added `Doc/gate2-design.md`, a localhost JSONL/TCP Unity runtime bridge,
+    a Gate2-only PlayMode host, deterministic debug_state/screenshot/trace
+    commands, and `scripts/unity_smoke.py`. The bridge is no-LLM/no-agent and
+    does not use MCP as the runtime channel.
+  - Verification: `python scripts\unity_smoke.py` PASS; required bug check with
+    `GATE1_BUG_DOOR_NOT_PERSISTED=1` FAILS nonzero with `progression_softlock`;
+    env restored and final normal smoke PASS rerun.
+  - Existing Unity suite remains green with `python scripts\run_unity_tests.py`:
+    3 PlayMode tests passed.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate2-v1`: 117 passed, 4 deselected.
+  - Next code step is Gate 3: design doc first, then Gameplay Agent integration
+    over this bridge; do not start Spec-to-Test, VLM, coverage, or mutation yet.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
