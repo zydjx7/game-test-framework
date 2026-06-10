@@ -301,11 +301,10 @@
 
 ## Current In Progress
 
-- Gate 2 Python runtime bridge is complete. NEXT CODE STEP = Gate 3:
-  first write/read a Gate 3 design doc, then wrap the bridge with the reused v1
-  Gameplay Agent on a `gameplay_checkpoint_no_softlock` goal. Normal run must
-  reach extraction; bug run (`GATE1_BUG_DOOR_NOT_PERSISTED=1`) must report
-  `progression_softlock` with trace + debug_state + screenshot evidence.
+- Gate 3 Gameplay Agent vertical slice is complete. NEXT CODE STEP = Gate 4:
+  first write/read a Gate 4 design doc, then add Spec-to-Test only as a
+  template-rendered Test Plan IR path for the checkpoint requirement. Do not
+  start VLM, coverage, mutation infrastructure, or multi-agent orchestration.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -392,6 +391,23 @@
     --basetemp .pytest_tmp\gate2-v1`: 117 passed, 4 deselected.
   - Next code step is Gate 3: design doc first, then Gameplay Agent integration
     over this bridge; do not start Spec-to-Test, VLM, coverage, or mutation yet.
+
+- [Codex] 2026-06-10 shared: Gate 3 Gameplay Agent checkpoint report complete
+  - Added `Doc/gate3-design.md`, `unity_agent/goals.feature`, a Unity adapter
+    over the Gate 2 bridge, and `scripts/unity_agent_smoke.py`. The smoke reuses
+    v1 `run_reflective_agent` and `snapshot_result` by import; no v1 core files
+    were edited. The local decider/reflector are deterministic so the gate is
+    machine-repeatable without LLM API dependency.
+  - Verification: `python scripts\unity_agent_smoke.py` PASS normal; bug build
+    with `GATE1_BUG_DOOR_NOT_PERSISTED=1` plus `--expect progression_softlock`
+    PASS and writes a report with debug_state, screenshot, and trace; the same
+    bug build without `--expect` FAILS nonzero (normal gate cannot accept it).
+  - Existing gate checks remain green: `python scripts\unity_smoke.py` PASS and
+    `python scripts\run_unity_tests.py` PASS (3 PlayMode tests).
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate3-v1`: 117 passed, 4 deselected.
+  - Next code step is Gate 4: design doc first; template-rendered Spec-to-Test
+    only, no VLM/coverage/mutation/multi-agent work yet.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
