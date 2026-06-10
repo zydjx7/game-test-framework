@@ -20,6 +20,13 @@ ViZDoom 轨迹 (Phases 0–3.5) **已完成、117 tests green、保留为 Python
 > 呈现层 / 进度 softlock bug），拿到 screenshot + trace + debug_state，生成开发者
 > 可复现的报告。
 
+**最终全景（防中途跑偏）**：双 Agent 闭环，不是单个 gameplay bot——Spec-to-Test Agent
+从需求生成分层测试（unit / PlayMode / gameplay goal），Gameplay QA Agent（复用 v1 core）
+执行目标级场景并产出 bug report，report 再回流 Spec-to-Test 生成回归测试（bug build
+FAIL / fixed build PASS）。研究核心（failure attribution / 误报抑制）在 Gameplay QA
+Agent；Spec-to-Test 是系统广度。详见 `Doc/project-direction.md` § End-state
+architecture。**Gate 只是通往它的施工顺序，不是项目全貌。**
+
 ## 铁律：live-smoke 优先（最重要）
 
 ViZDoom 轨迹能成，是因为每步可验证：改 → `python -m pytest` → 跑 demo → 读
@@ -41,6 +48,7 @@ editor/scene/prefab 状态里，AI 看不全、初学者难 debug）。所以：
 - Gate 3：Gameplay Agent（复用 v1 core）接入，报 progression_softlock。
 - Gate 4：Spec-to-Test Agent（先 Test Plan IR + 模板，不直接 LLM 生成 C#）。
 - Gate 5：VLM 作视觉证据（不单独定罪）。
+- Gate 6：bug→regression 闭环（Gate 3 report 回流 Spec-to-Test → 生成可编译回归测试，bug build FAIL / fixed build PASS）。
 
 ## AI 硬规则（Claude Code / Codex 都遵守，详见 `Doc/project-direction.md`）
 

@@ -31,6 +31,75 @@ So we keep the agent core and move the target to a **real engine (Unity)**.
 > bug — especially the presentation / progression-softlock bugs unit tests miss —
 > capture screenshot + trace + debug_state, and emit a developer-reproducible report.
 
+## End-state architecture — what this is ultimately building
+
+The Gates below are the **build order**, not the full picture. The intended end
+state is a **dual-agent GameTest Agent System** that closes the loop from
+requirement to permanent regression protection:
+
+```text
+Game requirement / GDD / bug report / PR diff
+        |
+        v
+Spec-to-Test Agent
+  reads specs / code / bug reports -> structured Test Plan IR ->
+  template-renders tests. It does NOT play the game.
+        |
+        v
+Layered tests
+  +- Unit tests (NUnit, engine-side)
+  +- Component / integration tests
+  +- PlayMode / functional tests (fixed-script scene tests)
+  +- Gameplay Agent goals (goal-level Gherkin, NOT fixed scripts)
+        |
+        v
+Test Runner / Unity runtime
+  compile, run, pass/fail, debug_state.json, screenshots, trace/replay,
+  logs. Agents call these tools; they never invent pass/fail.
+        |
+        v
+Gameplay QA Agent (reuses the v1 agent core)
+  executes goal-level scenarios via the runtime bridge;
+  observes debug_state + screenshots; VLM = visual evidence only;
+  classifies failures (incl. progression_softlock); emits the bug report.
+        |
+        v
+Bug report (repro steps + debug_state + screenshots + trace)
+        |
+        v
+Bug-to-Regression loop
+  the report feeds BACK into the Spec-to-Test Agent, which renders a
+  permanent unit/PlayMode regression test:
+  it must FAIL on the bug build and PASS on the fixed build.
+```
+
+**Why layered (the system's core selling point):** which layer fails localizes
+the bug. Unit green + PlayMode red → scene wiring/config problem; all scripted
+layers green + Gameplay Agent red → a cross-system or player-visible issue that
+only goal-level play exposes. The layers are complementary, not redundant.
+
+Module responsibilities:
+
+- **Spec-to-Test Agent** — requirements in; Test Plan IR + template-rendered
+  tests out. Never executes gameplay.
+- **Test Runner / evaluation tools** — the only source of pass/fail truth.
+- **Gameplay QA Agent** — goal-level execution + failure attribution + report.
+  The RESEARCH core (failure attribution / false-positive suppression — the
+  thesis) lives HERE; Spec-to-Test is system breadth, not the thesis.
+- **VLM visual inspection** — player-visible evidence for presentation /
+  progression bugs. Never the sole oracle (hard rule 4).
+- **Bug-to-Regression** — turns one discovered bug into a permanent guard.
+
+What this system is **NOT** (scope fence — cite this against drift):
+
+- Not a replacement for unit tests (it complements them at layers they miss).
+- Not a pure black-box game-playing bot, and not a VLM-only QA system.
+- Not full game QA: performance, network, localization, compliance, balance,
+  and subjective playtest are OUT of scope unless explicitly added later.
+
+The Gates are deliberately narrower than this end state. Do not pre-build later
+modules (hard rule 8) — but never mistake Gate 0–2 plumbing for the project.
+
 ## Cardinal rule: live-smoke first (the most important line in this doc)
 
 The ViZDoom track succeeded because every change was verifiable: edit → `python -m
@@ -67,7 +136,8 @@ v2 reuses these; it does not touch them. They stay green as the portability proo
   MiniFPS across the Gates, NOT a fun game. Gate 0 is an empty skeleton + one door.
 - **Presentation / progression** bug classes + **VLM as visual evidence** (not sole
   oracle).
-- (later gates) **Spec-to-Test Agent**; **bug→regression** loop.
+- (Gate 4) **Spec-to-Test Agent**; (Gate 6) the **bug→regression** loop that
+  closes the system.
 
 ## Runtime bridge ≠ editor MCP (do not conflate)
 
@@ -90,6 +160,7 @@ implemented in C# + a thin RPC.
 | **3** | Gameplay Agent (reuse v1 core) on a `gameplay_checkpoint_no_softlock` goal | Normal → agent reaches extraction; bug build → agent reports `progression_softlock` with screenshot + trace + debug_state. |
 | **4** | Spec-to-Test Agent: requirement → Test Plan IR → **templated** unit/PlayMode tests | From the checkpoint requirement it emits a layered plan and template-renders at least a **compilable** unit + PlayMode test. |
 | **5** | VLM as visual evidence | VLM answers structured questions (marker behind closed door? player view blocked?) appended as evidence — never the sole verdict. |
+| **6** | Bug-to-regression loop | Given the Gate 3 bug report, the Spec-to-Test Agent renders ≥1 **compilable** unit/component/PlayMode regression test that **FAILS on the bug build and PASSES on the fixed build** (Gate 1's bug toggle provides both builds). |
 
 **First valuable bug = checkpoint softlock (Gate 1+).** Gate 0's mechanic is
 deliberately trivial: its only job is to prove the Unity→test→state pipeline is real

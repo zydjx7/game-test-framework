@@ -288,6 +288,12 @@
   - CLAUDE.md: "DeepSeek is the only LLM provider" clarified -> only TEXT/planning LLM; VLM perception uses Qwen3-VL-Flash / DashScope (VLMPerceptor).
   - Unity project location LOCKED to repo `unity/`; added a Unity block to `.gitignore` (Library/Temp/Obj/Build/etc.) BEFORE the project exists so generated folders are never committed.
 
+- [Claude] 2026-06-10 shared: add end-state dual-agent architecture + Gate 6 (bug→regression) to direction docs
+  - Rationale: the Gate table tells an agent the NEXT step but not the DESTINATION — without the final picture, future agents could reduce the project to "Unity smoke" or "a single gameplay bot" and lose the Spec-to-Test / bug-to-regression loop. Knowing the loop ≠ pre-building it; hard rule 8 (no pre-writing later-Gate specs) unchanged.
+  - Doc/project-direction.md gains "End-state architecture": requirement → Spec-to-Test (Test Plan IR + templates) → layered tests (unit/component/PlayMode/gameplay goals) → runner/runtime → Gameplay QA Agent (v1 core + bridge + VLM-as-evidence) → bug report → bug-to-regression. Includes layered-localization rationale (which layer fails localizes the bug), module responsibilities, a what-this-is-NOT scope fence, and: the RESEARCH core (failure attribution / false-positive suppression) lives in the Gameplay QA Agent — Spec-to-Test is system breadth, not the thesis.
+  - Gate table gains Gate 6: from the Gate 3 bug report, Spec-to-Test renders ≥1 compilable regression test that FAILS on the bug build and PASSES on the fixed build (Gate 1's bug toggle provides both builds).
+  - CLAUDE.md adds a 最终全景 mini-summary + Gate 6 line; AGENTS.md build-order extended to Gate 6 + an explicit End-state pointer.
+
 ## Current In Progress
 
 - Direction pivot landed in docs (see 2026-06-10 entries). NEXT CODE STEP = Gate 0:

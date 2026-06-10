@@ -42,7 +42,14 @@ command-line PlayMode test or a smoke script that prints PASS/FAIL.** Unity's
 0 trivial-mechanic Unity PlayMode smoke (prove the pipeline) → 1 checkpoint-softlock
 fixture + injected bug → 2 Python runtime bridge (no-LLM) → 3 Gameplay Agent reports
 `progression_softlock` → 4 Spec-to-Test (Test Plan IR + templates) → 5 VLM visual
-evidence.
+evidence → 6 bug→regression (generated regression test FAILS on the bug build,
+PASSES on the fixed one).
+
+**End state (do not lose sight of it):** a dual-agent loop — Spec-to-Test
+(requirement → Test Plan IR → layered tests) + Gameplay QA Agent (goal-level
+execution + failure attribution + report) + bug-to-regression feedback. See
+`Doc/project-direction.md` § End-state architecture. The Gates are the build order
+toward that loop; Gate 0–2 plumbing is not the project itself.
 
 **Hard rules (do not violate):**
 
