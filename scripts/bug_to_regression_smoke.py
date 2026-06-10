@@ -1,0 +1,298 @@
+"""Gate 6 bug-to-regression smoke.
+
+Turns the Gate 3 checkpoint-softlock bug report into a generated Unity
+regression test, then proves the generated test FAILS on the injected bug build
+and PASSES on the fixed/default build.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from typing import Any, Dict, Iterable, List
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from bug_to_regression import BugToRegressionAgent, UnityRegressionRenderer  # noqa: E402
+from run_unity_tests import DEFAULT_PROJECT, DEFAULT_UNITY_EXE  # noqa: E402
+
+
+BUG_ENV_VAR = "GATE1_BUG_DOOR_NOT_PERSISTED"
+TEST_CATEGORY = "Gate6Regression"
+
+DEFAULT_SOURCE_REPORT = REPO_ROOT / "results" / "unity" / "gate6_source_agent_report.json"
+DEFAULT_SOURCE_RESULTS = REPO_ROOT / "results" / "unity" / "gate6_source_agent_results.xml"
+DEFAULT_SOURCE_LOG = REPO_ROOT / "results" / "unity" / "gate6_source_agent_unity.log"
+DEFAULT_SOURCE_READY = REPO_ROOT / "results" / "unity" / "gate6_source_agent_bridge_ready.json"
+DEFAULT_PLAN = REPO_ROOT / "results" / "unity" / "bug_to_regression_plan.json"
+DEFAULT_BUG_RESULTS = REPO_ROOT / "results" / "unity" / "gate6_regression_bug_results.xml"
+DEFAULT_BUG_LOG = REPO_ROOT / "results" / "unity" / "gate6_regression_bug_unity.log"
+DEFAULT_FIXED_RESULTS = REPO_ROOT / "results" / "unity" / "gate6_regression_fixed_results.xml"
+DEFAULT_FIXED_LOG = REPO_ROOT / "results" / "unity" / "gate6_regression_fixed_unity.log"
+
+
+class BugToRegressionSmokeFailure(RuntimeError):
+    """A machine-checkable Gate 6 assertion failed."""
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--unity",
+        default=os.environ.get("UNITY_EXE", str(DEFAULT_UNITY_EXE)),
+        help="Path to Unity.exe. Defaults to UNITY_EXE or the pinned editor.",
+    )
+    parser.add_argument(
+        "--project",
+        default=str(DEFAULT_PROJECT),
+        help="Unity project path. Defaults to unity/GameTestFixture.",
+    )
+    parser.add_argument(
+        "--source-report",
+        default=str(DEFAULT_SOURCE_REPORT),
+        help="Gate 3 source bug report path produced by this smoke.",
+    )
+    parser.add_argument(
+        "--plan",
+        default=str(DEFAULT_PLAN),
+        help="Regression Test Plan IR JSON path.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=90.0,
+        help="Seconds to wait for Unity bridge startup and shutdown.",
+    )
+    return parser.parse_args()
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise BugToRegressionSmokeFailure(message)
+
+
+def run_gate3_bug_smoke(args: argparse.Namespace) -> None:
+    source_report = Path(args.source_report)
+    for path in (
+        source_report,
+        Path(args.plan),
+        DEFAULT_SOURCE_RESULTS,
+        DEFAULT_SOURCE_LOG,
+        DEFAULT_SOURCE_READY,
+        DEFAULT_BUG_RESULTS,
+        DEFAULT_BUG_LOG,
+        DEFAULT_FIXED_RESULTS,
+        DEFAULT_FIXED_LOG,
+    ):
+        if path.exists():
+            path.unlink()
+
+    command = [
+        sys.executable,
+        str(REPO_ROOT / "scripts" / "unity_agent_smoke.py"),
+        "--expect",
+        "progression_softlock",
+        "--unity",
+        str(args.unity),
+        "--project",
+        str(args.project),
+        "--results",
+        str(DEFAULT_SOURCE_RESULTS),
+        "--log",
+        str(DEFAULT_SOURCE_LOG),
+        "--ready",
+        str(DEFAULT_SOURCE_READY),
+        "--report",
+        str(source_report),
+        "--timeout",
+        str(args.timeout),
+    ]
+
+    env = os.environ.copy()
+    env[BUG_ENV_VAR] = "1"
+    print("Running Gate 3 injected-bug smoke for Gate 6 regression input...", flush=True)
+    print(" ".join(command), flush=True)
+    completed = subprocess.run(command, env=env, check=False)
+    if completed.returncode != 0:
+        raise BugToRegressionSmokeFailure(
+            f"Gate 3 source bug smoke failed with exit code {completed.returncode}."
+        )
+
+
+def load_json(path: Path) -> Dict[str, Any]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BugToRegressionSmokeFailure(f"Could not read JSON artifact {path}: {exc}") from exc
+
+
+def write_json(path: Path, payload: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def validate_rendered_files(paths: Dict[str, Path]) -> None:
+    for label, path in paths.items():
+        require(path.exists(), f"rendered {label} missing: {path}")
+        text = path.read_text(encoding="utf-8")
+        require("<auto-generated>" in text, f"rendered {label} missing generated header")
+        require(TEST_CATEGORY in text, f"rendered {label} missing {TEST_CATEGORY} category")
+        require(BUG_ENV_VAR in text, f"rendered {label} must read the Gate 1 bug env var")
+
+
+def unity_regression_command(
+    args: argparse.Namespace,
+    results_path: Path,
+    log_path: Path,
+) -> List[str]:
+    return [
+        sys.executable,
+        str(REPO_ROOT / "scripts" / "run_unity_tests.py"),
+        "--unity",
+        str(args.unity),
+        "--project",
+        str(args.project),
+        "--test-platform",
+        "PlayMode",
+        "--test-category",
+        TEST_CATEGORY,
+        "--results",
+        str(results_path),
+        "--log",
+        str(log_path),
+    ]
+
+
+def run_unity_regression(
+    args: argparse.Namespace,
+    results_path: Path,
+    log_path: Path,
+    *,
+    bug_enabled: bool,
+) -> subprocess.CompletedProcess[bytes]:
+    env = os.environ.copy()
+    if bug_enabled:
+        env[BUG_ENV_VAR] = "1"
+    else:
+        env.pop(BUG_ENV_VAR, None)
+
+    command = unity_regression_command(args, results_path, log_path)
+    print(" ".join(command), flush=True)
+    return subprocess.run(command, env=env, check=False)
+
+
+def read_unity_cases(results_path: Path) -> List[Dict[str, str]]:
+    if not results_path.exists():
+        raise BugToRegressionSmokeFailure(f"results XML missing: {results_path}")
+
+    root = ET.parse(results_path).getroot()
+    cases = []
+    for case in root.findall(".//test-case"):
+        message = case.findtext("./failure/message", default="").strip()
+        cases.append(
+            {
+                "name": case.attrib.get("fullname") or case.attrib.get("name", "<unnamed>"),
+                "result": case.attrib.get("result", "Unknown"),
+                "message": message,
+            }
+        )
+    return cases
+
+
+def assert_bug_run_failed(process: subprocess.CompletedProcess[bytes], results_path: Path) -> None:
+    require(
+        process.returncode != 0,
+        "Generated regression test should fail nonzero when the injected bug is enabled.",
+    )
+    cases = read_unity_cases(results_path)
+    generated = [
+        case
+        for case in cases
+        if "GeneratedCheckpointSoftlockRegressionTest" in case["name"]
+    ]
+    require(generated, "Gate 6 generated regression test case missing from bug results.")
+    require(
+        any(case["result"] == "Failed" for case in generated),
+        f"Generated regression test should fail on bug build, got {generated}.",
+    )
+    failure_text = " ".join(case["message"] for case in generated)
+    require(
+        "extraction" in failure_text.lower() or "progression" in failure_text.lower(),
+        "Bug-run failure should mention extraction/progression.",
+    )
+    print("PASS generated regression FAILS on injected bug build", flush=True)
+
+
+def assert_fixed_run_passed(process: subprocess.CompletedProcess[bytes], results_path: Path) -> None:
+    require(
+        process.returncode == 0,
+        f"Generated regression test should pass on fixed build, exit={process.returncode}.",
+    )
+    cases = read_unity_cases(results_path)
+    generated = [
+        case
+        for case in cases
+        if "GeneratedCheckpointSoftlockRegressionTest" in case["name"]
+    ]
+    require(generated, "Gate 6 generated regression test case missing from fixed results.")
+    require(
+        all(case["result"] == "Passed" for case in generated),
+        f"Generated regression test should pass on fixed build, got {generated}.",
+    )
+    print("PASS generated regression PASSES on fixed build", flush=True)
+
+
+def main() -> int:
+    args = parse_args()
+    source_report_path = Path(args.source_report)
+    plan_path = Path(args.plan)
+
+    try:
+        run_gate3_bug_smoke(args)
+        source_report = load_json(source_report_path)
+
+        plan = BugToRegressionAgent().plan(source_report, source_report_path)
+        plan_dict = plan.to_dict()
+        write_json(plan_path, plan_dict)
+        print(f"PASS regression_plan_ir {plan_path}", flush=True)
+
+        rendered = UnityRegressionRenderer(Path(args.project)).render(plan)
+        validate_rendered_files(rendered)
+        for label, path in rendered.items():
+            print(f"PASS rendered {label} {path}", flush=True)
+
+        bug_process = run_unity_regression(
+            args,
+            DEFAULT_BUG_RESULTS,
+            DEFAULT_BUG_LOG,
+            bug_enabled=True,
+        )
+        assert_bug_run_failed(bug_process, DEFAULT_BUG_RESULTS)
+
+        fixed_process = run_unity_regression(
+            args,
+            DEFAULT_FIXED_RESULTS,
+            DEFAULT_FIXED_LOG,
+            bug_enabled=False,
+        )
+        assert_fixed_run_passed(fixed_process, DEFAULT_FIXED_RESULTS)
+    except BugToRegressionSmokeFailure as exc:
+        print(f"FAIL {exc}", flush=True)
+        return 1
+    except (OSError, ValueError, ET.ParseError) as exc:
+        print(f"FAIL bug_to_regression_error: {exc}", flush=True)
+        return 1
+
+    print("PASS Bug-to-regression smoke passed.", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

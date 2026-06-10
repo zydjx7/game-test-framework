@@ -301,11 +301,13 @@
 
 ## Current In Progress
 
-- Gate 5 VLM visual evidence is complete. NEXT CODE STEP = Gate 6:
-  first write/read a Gate 6 design doc, then implement the bug-to-regression
-  loop using the Gate 1 bug toggle. The generated regression test must FAIL on
-  the injected bug build and PASS on the fixed build. Do not start coverage,
-  mutation infrastructure, or broader multi-agent orchestration yet.
+- Gate 6 bug-to-regression loop is complete. Gates 0-6 now form the first
+  end-to-end vertical slice: generated/templated tests, Gameplay Agent bug
+  report, VLM supporting evidence, and a generated regression test that FAILS on
+  the injected bug build and PASSES on the fixed build. NEXT STEP = decide the
+  post-Gate6 plan/design before coding; do not start coverage, mutation
+  infrastructure, broader orchestration, or a new bug class without updating the
+  forward plan or adding a gate-specific design doc.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -447,6 +449,27 @@
   - Next code step is Gate 6: design doc first; implement bug-to-regression
     generation that FAILS on the injected bug build and PASSES on the fixed
     build, without adding coverage/mutation or broader orchestration yet.
+
+- [Codex] 2026-06-11 shared: Gate 6 bug-to-regression loop complete
+  - Added `Doc/gate6-design.md` -> `5278e65`, `bug_to_regression/`,
+    `scripts/bug_to_regression_smoke.py`, and generated Unity PlayMode test
+    `GeneratedCheckpointSoftlockRegressionTest.cs` with category
+    `Gate6Regression`.
+  - The Gate 6 smoke reruns the Gate 3 injected softlock path, validates the
+    source `progression_softlock` report, emits Regression Test Plan IR, renders
+    the regression test, then proves the same generated test FAILS with
+    `GATE1_BUG_DOOR_NOT_PERSISTED=1` and PASSES with the env unset.
+  - Verification: `python scripts\bug_to_regression_smoke.py` PASS; existing
+    gate checks remain green with `python scripts\run_unity_tests.py` PASS (5
+    PlayMode tests), `python scripts\unity_smoke.py` PASS,
+    `python scripts\unity_agent_smoke.py` PASS,
+    `python scripts\spec_to_test_smoke.py` PASS, and
+    `python scripts\vlm_evidence_smoke.py` PASS.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate6-v1`: 117 passed, 4 deselected.
+  - Next step is a post-Gate6 planning/design decision before coding. Do not
+    start coverage, mutation infrastructure, broader multi-agent orchestration,
+    or a second bug class as an implicit Gate 7.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
