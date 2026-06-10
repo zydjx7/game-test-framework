@@ -301,10 +301,11 @@
 
 ## Current In Progress
 
-- Gate 4 Spec-to-Test template slice is complete. NEXT CODE STEP = Gate 5:
-  first write/read a Gate 5 design doc, then add VLM visual evidence beside
-  `debug_state`/trace/screenshot. VLM must not become the sole oracle; do not
-  start coverage, mutation infrastructure, or bug-to-regression yet.
+- Gate 5 VLM visual evidence is complete. NEXT CODE STEP = Gate 6:
+  first write/read a Gate 6 design doc, then implement the bug-to-regression
+  loop using the Gate 1 bug toggle. The generated regression test must FAIL on
+  the injected bug build and PASS on the fixed build. Do not start coverage,
+  mutation infrastructure, or broader multi-agent orchestration yet.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -425,6 +426,27 @@
     --basetemp .pytest_tmp\gate4-v1`: 117 passed, 4 deselected.
   - Next code step is Gate 5: design doc first; VLM visual evidence only beside
     existing state/trace/screenshot oracles.
+
+- [Codex] 2026-06-11 shared: Gate 5 VLM visual evidence smoke complete
+  - Added `Doc/gate5-design.md` -> `0f59ee2`, `vlm_evidence/`, and
+    `scripts/vlm_evidence_smoke.py`. The smoke reruns the Gate 3 injected
+    softlock path, verifies the source `progression_softlock` report, then
+    writes standalone and combined visual-evidence JSON artifacts under
+    `results/unity/`.
+  - Gate 5 uses a deterministic local `fixture-vlm` backend for the required
+    smoke so PASS/FAIL does not depend on API keys, network, provider region, or
+    model drift. A real VLM may replace the backend later only through the same
+    evidence schema; `debug_state`/trace/agent report remain the verdict source.
+  - Verification: `python scripts\vlm_evidence_smoke.py` PASS; existing gate
+    checks remain green with `python scripts\run_unity_tests.py` PASS (4
+    PlayMode tests), `python scripts\unity_smoke.py` PASS,
+    `python scripts\unity_agent_smoke.py` PASS, and
+    `python scripts\spec_to_test_smoke.py` PASS.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate5-v1`: 117 passed, 4 deselected.
+  - Next code step is Gate 6: design doc first; implement bug-to-regression
+    generation that FAILS on the injected bug build and PASSES on the fixed
+    build, without adding coverage/mutation or broader orchestration yet.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
