@@ -294,6 +294,11 @@
   - Gate table gains Gate 6: from the Gate 3 bug report, Spec-to-Test renders ≥1 compilable regression test that FAILS on the bug build and PASSES on the fixed build (Gate 1's bug toggle provides both builds).
   - CLAUDE.md adds a 最终全景 mini-summary + Gate 6 line; AGENTS.md build-order extended to Gate 6 + an explicit End-state pointer.
 
+- [Claude] 2026-06-10 shared: Gate 0 design doc locked (GPT review round 2) + unity path pinned
+  - Doc/gate0-design.md NEW (written AT gate start, v1 convention): hard PASS = CLI PlayMode + door assert + debug_state.json (screenshot best-effort, hard by Gate 3, prove by Gate 2); NO authored scene at Gate 0 — the PlayMode test constructs GameObjects programmatically (kills the Build-Settings + scene-authoring traps; first scene at Gate 1); asmdef = default path but NOT a Gate 0 blocker (test asmdef cannot reference Assembly-CSharp, so Runtime asmdef is the documented fix; if it misbehaves, pass the gate with the simplest compiling structure, tidy in "Gate 0.5"); division of labor (human: Hub + editor + license sign-in + pin version/path in WORKLOG; agent: everything else incl. the REQUIRED negative FAIL check); known traps (license, -quit vs -runTests, Editor process lock, NUnit3 results, artifacts only under gitignored results/unity/).
+  - Unity project path PINNED: unity/GameTestFixture/ ("fixture", not "MiniFPS" — the name must not invite FPS-building at Gate 0). project-direction.md + CLAUDE.md path table updated.
+  - Progress is measured by Gate criteria, not time estimates (Unity risk concentrates in env/license/CLI, not in features).
+
 ## Current In Progress
 
 - Direction pivot landed in docs (see 2026-06-10 entries). NEXT CODE STEP = Gate 0:
@@ -304,14 +309,15 @@
 
 ## Next Task
 
-- Gate 0 (Unity verifiable env). Start from an EMPTY/minimal Unity 3D project — do NOT
-  import the FPS Microgame yet (it drags in weapon/enemy/HUD/input you don't need and
-  can't yet debug). Gate 0 needs only: a `DoorController`, a `DebugStateExporter`, a
-  PlayMode test, and (best-effort) a render artifact. Unity project lives at repo
-  `unity/` (the `.gitignore` Unity block is already in place). Establish the command-
-  line PlayMode smoke BEFORE any gameplay logic. PASS = CLI returns test pass/fail +
-  door state asserted + `debug_state.json` exported, without clicking the Editor. A
-  character controller gets cherry-picked at Gate 1, never the whole Microgame.
+- Gate 0 — execute per `Doc/gate0-design.md`. PRECONDITION (human, GUI — agents
+  cannot do this): install Unity Hub + one LTS editor (Unity 6 LTS or 2022.3 LTS),
+  sign in once (license), then record the editor version + full Unity.exe path HERE
+  in WORKLOG. After that an agent does the rest: empty project at
+  unity/GameTestFixture/ → DoorController + DebugStateExporter + PlayMode test
+  (programmatic GameObjects, NO authored scene at Gate 0) →
+  scripts/run_unity_tests.py → negative FAIL check → commit/push. Hard PASS = CLI
+  PASS/FAIL + door assert + debug_state.json, Editor closed. Progress is measured by
+  Gate criteria, not time estimates.
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
   robustness sweep stays deferred.

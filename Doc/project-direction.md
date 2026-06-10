@@ -132,8 +132,10 @@ v2 reuses these; it does not touch them. They stay green as the portability proo
 
 - A **Unity runtime adapter** (Python ↔ *running* game) implementing the adapter
   contract.
-- A **Unity test-fixture sandbox** at repo `unity/` — a QA fixture that grows into a
-  MiniFPS across the Gates, NOT a fun game. Gate 0 is an empty skeleton + one door.
+- A **Unity test-fixture sandbox** at repo `unity/GameTestFixture/` (path pinned;
+  named "fixture", not "MiniFPS", so no agent mistakes Gate 0 for FPS-building) — a
+  QA fixture that grows into a MiniFPS across the Gates, NOT a fun game. Gate 0 is
+  an empty skeleton + one door (design: `Doc/gate0-design.md`).
 - **Presentation / progression** bug classes + **VLM as visual evidence** (not sole
   oracle).
 - (Gate 4) **Spec-to-Test Agent**; (Gate 6) the **bug→regression** loop that

@@ -99,7 +99,7 @@ v2 落地：(1) Gate 3 的 goal；(2) 复用 reflection/recovery，新增 progre
 | `F:\game-testing-main\` | 主项目（Python agent core + 适配器 + 文档） |
 | `Code/` / `src/rivergame/` | 本科 AssaultCube/RiverGame baseline，**永不动** |
 | `env/` `agent/` `actions/` `perception/` `toy_fps/` | v1 已建、复用、**保持 green** |
-| `unity/`（repo 内） | v2 新增 Unity 项目，**定为仓库内**；建项目前先在 `.gitignore` 加 Unity block（`Library/`/`Temp/`/`Obj/` 等生成物） |
+| `unity/GameTestFixture/` | v2 Unity 项目（**路径已锁定**；名字是 test fixture 不是 MiniFPS——它随 Gate 长成 MiniFPS）。`.gitignore` Unity block 已就位；Gate 0 规格 → `Doc/gate0-design.md` |
 | `F:\OBSIDIAN\Obsidian Vault\论文\` | 规划/笔记/汇报草稿，**不放代码**；AI 不改 Obsidian |
 
 ## ViZDoom 关键技术事实（v1 core 仍在用，避免 LLM 幻觉）
