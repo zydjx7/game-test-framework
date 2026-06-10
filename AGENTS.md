@@ -161,20 +161,20 @@ module ownership, design invariants, "do not do X" lists, and anticipated defens
 
 Rules:
 
-- **Before any architectural decision** (new top-level directory, scope change,
-  phase reorder, new module added, baseline-vs-new-line boundary change), read
-  the relevant Phase section of `Doc/research-plan.md` first.
-- If your proposed change conflicts with the plan, either:
-  1. update `Doc/research-plan.md` in the **same commit** as the code change,
-     using `shared:` prefix; or
-  2. explain in the commit body's `Notes for future agents:` section why the
-     deviation is justified.
-- Do **not** silently diverge code from the plan. Either the plan is wrong
-  (then update it) or the code is wrong (then fix it).
-- The user maintains a personal Obsidian mirror at
-  `F:\OBSIDIAN\Obsidian Vault\论文\扩展构想-ViZDoom版.md` for nicer reading;
-  that file is not authoritative. AI agents must not edit it -- always edit
-  `Doc/research-plan.md` instead.
+- **For v2 / Unity-track decisions** (anything on the GameTest Agent System track —
+  new module, Gate change, scope change, bridge/adapter design): read
+  `Doc/project-direction.md` first. If the change modifies the forward plan, update
+  `Doc/project-direction.md` (or add an ADR) in the **same commit**, `shared:` prefix.
+  **Do NOT update `Doc/research-plan.md` for v2 changes** — it is v1 history.
+- **For v1 / ViZDoom-maintenance decisions** (touching the reused Python core,
+  adapters, or a v1 invariant): read `Doc/research-plan.md` + the relevant ADRs first.
+  If the change conflicts with a v1 invariant, update `Doc/research-plan.md` in the
+  same commit (`shared:`) or justify it in the commit body's `Notes for future agents:`.
+- Do **not** silently diverge code from whichever plan governs it. Either the plan is
+  wrong (update it) or the code is wrong (fix it).
+- The user keeps personal Obsidian mirrors under `F:\OBSIDIAN\Obsidian Vault\论文\`
+  for nicer reading; those are **not** authoritative and AI agents must not edit them —
+  always edit the repo docs (`Doc/*.md`) instead.
 
 ## Shared Files
 

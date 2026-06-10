@@ -282,21 +282,30 @@
   - BUILD ORDER (Gates, do NOT skip): 0 trivial-mechanic Unity PlayMode smoke (prove pipeline) → 1 checkpoint-softlock fixture + injected door-not-persisted bug → 2 Python runtime bridge (no-LLM) → 3 Gameplay Agent reports progression_softlock → 4 Spec-to-Test (Test Plan IR + templates) → 5 VLM visual evidence.
   - Three differentiators PRESERVED/reframed: goal-level Gherkin (Gate 3 goal), failure reflection + recovery ladder (+ progression_softlock class), injected-bug eval + report oracle (Gate 1 mutation, Gate 3/5 report+VLM).
 
+- [Claude] 2026-06-10 shared: refine pivot docs after a GPT review (no direction change)
+  - Gate 0 reframed "Unity MiniFPS" -> "Unity test-fixture skeleton" (empty/minimal 3D project, no player/weapon/HUD). Start EMPTY; do NOT import the FPS Microgame (cherry-pick a character controller at Gate 1 instead). Screenshot is best-effort at Gate 0 but a HARD requirement by Gate 3 (VLM); robust path = Camera->RenderTexture->EncodeToPNG, not GameView/ScreenCapture.
+  - AGENTS.md Architecture-of-Record Rules SPLIT: v2/Unity decisions -> Doc/project-direction.md (or ADR); v1/ViZDoom-maintenance -> Doc/research-plan.md. Future agents must NOT update research-plan.md for v2 changes.
+  - CLAUDE.md: "DeepSeek is the only LLM provider" clarified -> only TEXT/planning LLM; VLM perception uses Qwen3-VL-Flash / DashScope (VLMPerceptor).
+  - Unity project location LOCKED to repo `unity/`; added a Unity block to `.gitignore` (Library/Temp/Obj/Build/etc.) BEFORE the project exists so generated folders are never committed.
+
 ## Current In Progress
 
-- Direction pivot landed in docs (see 2026-06-10 entry). NEXT CODE STEP = Gate 0:
-  stand up a Unity MiniFPS + ONE trivial mechanic (door open/close) + a command-line
-  PlayMode test + debug_state/screenshot export. Gate 0's only job is to prove the
-  Unity→test→state pipeline is command-line verifiable. No agent / no VLM / no bridge yet.
+- Direction pivot landed in docs (see 2026-06-10 entries). NEXT CODE STEP = Gate 0:
+  stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
+  mechanic (door open/close) + a command-line PlayMode test + debug_state.json export
+  (screenshot best-effort). Gate 0's only job is to prove the Unity→test→state pipeline
+  is command-line verifiable. Start EMPTY — no FPS template, no agent / VLM / bridge yet.
 
 ## Next Task
 
-- Gate 0 (Unity verifiable env). Suggested first move: pull a Unity FPS Microgame /
-  minimal template, confirm it launches, add ONE door-state mechanic + a PlayMode test
-  runnable from the command line, export debug_state.json + a screenshot. Decide where
-  the Unity project lives (repo `unity/` subdir vs sibling). Establish the Unity
-  live-smoke command BEFORE any gameplay logic. PASS = you know test pass/fail from the
-  command line without clicking the Editor.
+- Gate 0 (Unity verifiable env). Start from an EMPTY/minimal Unity 3D project — do NOT
+  import the FPS Microgame yet (it drags in weapon/enemy/HUD/input you don't need and
+  can't yet debug). Gate 0 needs only: a `DoorController`, a `DebugStateExporter`, a
+  PlayMode test, and (best-effort) a render artifact. Unity project lives at repo
+  `unity/` (the `.gitignore` Unity block is already in place). Establish the command-
+  line PlayMode smoke BEFORE any gameplay logic. PASS = CLI returns test pass/fail +
+  door state asserted + `debug_state.json` exported, without clicking the Editor. A
+  character controller gets cherry-picked at Gate 1, never the whole Microgame.
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
   robustness sweep stays deferred.

@@ -33,8 +33,9 @@ editor/scene/prefab 状态里，AI 看不全、初学者难 debug）。所以：
 
 ## 当前 Gate（详见 `Doc/project-direction.md`，不要 start Gate N+1 前先过 Gate N）
 
-- **Gate 0**（现在）：Unity MiniFPS + 一个**琐碎**机制（开关门）+ 命令行 PlayMode test +
-  导出 debug_state/screenshot。判据：不开 Editor 也能从命令行知道 pass/fail。无 agent / 无 VLM / 无 bridge。
+- **Gate 0**（现在）：Unity **测试夹具骨架**（空/最小 3D 项目，不是游戏，无玩家/枪/相机/HUD/敌人）+
+  一个**琐碎**机制（开关门）+ 命令行 PlayMode test + 导出 `debug_state.json`（screenshot 尽力而为）。
+  判据：不开 Editor 也能从命令行知道 pass/fail。**从空项目起步，不导入 FPS 模板**；无 agent / 无 VLM / 无 bridge。
 - Gate 1：checkpoint softlock fixture + 注入 door-not-persisted bug。
 - Gate 2：Python runtime bridge（reset/action/observe/...），no-LLM 跑通。
 - Gate 3：Gameplay Agent（复用 v1 core）接入，报 progression_softlock。
@@ -68,7 +69,7 @@ v2 落地：(1) Gate 3 的 goal；(2) 复用 reflection/recovery，新增 progre
 
 ## 关键设计决定（不要回退）
 
-- **DeepSeek 是唯一 LLM provider**。OpenAI-compatible SDK 接 DeepSeek。配置入口：`src/llm/client_helpers.py`
+- **DeepSeek 是唯一文本/决策 LLM provider**（OpenAI-compatible SDK 接 DeepSeek，配置入口 `src/llm/client_helpers.py`）。**VLM 感知是例外**：用 Qwen3-VL-Flash / DashScope（`VLMPerceptor`），不要把这两者混为一谈。
 - **Ground truth 来自引擎内部状态**（ViZDoom `game_variables` / Unity debug_state exporter），不用 OCR。
 - **Gherkin 是"目标描述"不是"步骤描述"**。
 - **perception / actions / agent / oracle 解耦，能独立测试。**
@@ -90,7 +91,7 @@ v2 落地：(1) Gate 3 的 goal；(2) 复用 reflection/recovery，新增 progre
 | `F:\game-testing-main\` | 主项目（Python agent core + 适配器 + 文档） |
 | `Code/` / `src/rivergame/` | 本科 AssaultCube/RiverGame baseline，**永不动** |
 | `env/` `agent/` `actions/` `perception/` `toy_fps/` | v1 已建、复用、**保持 green** |
-| Unity 项目 | v2 新增（位置在 Gate 0 落地时定，建议仓库内 `unity/` 子目录或并列） |
+| `unity/`（repo 内） | v2 新增 Unity 项目，**定为仓库内**；建项目前先在 `.gitignore` 加 Unity block（`Library/`/`Temp/`/`Obj/` 等生成物） |
 | `F:\OBSIDIAN\Obsidian Vault\论文\` | 规划/笔记/汇报草稿，**不放代码**；AI 不改 Obsidian |
 
 ## ViZDoom 关键技术事实（v1 core 仍在用，避免 LLM 幻觉）

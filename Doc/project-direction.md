@@ -63,7 +63,8 @@ v2 reuses these; it does not touch them. They stay green as the portability proo
 
 - A **Unity runtime adapter** (Python ↔ *running* game) implementing the adapter
   contract.
-- A **Unity MiniFPS** sandbox — a testable QA fixture, NOT a fun game.
+- A **Unity test-fixture sandbox** at repo `unity/` — a QA fixture that grows into a
+  MiniFPS across the Gates, NOT a fun game. Gate 0 is an empty skeleton + one door.
 - **Presentation / progression** bug classes + **VLM as visual evidence** (not sole
   oracle).
 - (later gates) **Spec-to-Test Agent**; **bug→regression** loop.
@@ -83,7 +84,7 @@ implemented in C# + a thin RPC.
 
 | Gate | Deliverable | PASS criterion |
 |---|---|---|
-| **0** | Unity MiniFPS + a **trivial** mechanic (one door open/close) + a command-line PlayMode test + exported `debug_state.json` + screenshot | You know pass/fail **from the command line**, without clicking the Editor. Pipeline proven on a 1-system mechanic. |
+| **0** | Unity **test-fixture skeleton** (empty/minimal 3D project — NOT a game; no player/weapon/camera/HUD/enemy) + ONE trivial mechanic (door open/close) + a command-line PlayMode test + exported `debug_state.json`; screenshot best-effort | **Hard gate:** CLI PlayMode run returns PASS/FAIL **and** door-state asserted in the test **and** `debug_state.json` exported & checked — all without clicking the Editor. Screenshot is a best-effort artifact (see notes); do not let it block "pipeline verified". |
 | **1** | Checkpoint-softlock fixture (player / keycard / door / checkpoint / death-respawn / objective / extraction) + a fixed-script PlayMode test | Normal build PASS; with injected `door-not-persisted` bug, FAIL. |
 | **2** | Python runtime bridge (`reset/action/observe/debug_state/screenshot/trace`) + `scripts/unity_smoke.py` | A **no-LLM** Python script drives the full checkpoint flow end-to-end and asserts state. (= adapter-contract realised in Unity.) |
 | **3** | Gameplay Agent (reuse v1 core) on a `gameplay_checkpoint_no_softlock` goal | Normal → agent reaches extraction; bug build → agent reports `progression_softlock` with screenshot + trace + debug_state. |
@@ -93,6 +94,18 @@ implemented in C# + a thin RPC.
 **First valuable bug = checkpoint softlock (Gate 1+).** Gate 0's mechanic is
 deliberately trivial: its only job is to prove the Unity→test→state pipeline is real
 and command-line-controllable before any multi-system mechanic.
+
+**Start from an EMPTY/minimal Unity 3D project, not an FPS template.** Gate 0 needs
+only a `DoorController`, a `DebugStateExporter`, and a PlayMode test — no player,
+weapon, camera, enemy, or HUD. Do NOT import the FPS Microgame wholesale (it drags in
+systems you don't need and can't yet debug). A character controller is **cherry-picked**
+in at Gate 1 (from Unity Starter Assets / the Microgame), never imported as a whole.
+
+**Screenshot note.** Unity batchmode screenshots are flaky (no GameView; `-nographics`
+can't render). Do NOT depend on `ScreenCapture`/GameView. The robust path is a fixed
+Camera → RenderTexture → `Texture2D.EncodeToPNG`. Screenshot is best-effort at Gate 0
+but becomes a **hard requirement by Gate 3** (the VLM gate needs real frames) — prove
+it works no later than Gate 2.
 
 ## Deferred — do NOT start before its gate
 

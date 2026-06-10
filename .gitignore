@@ -85,3 +85,26 @@ experiments/**/*.csv
 # ===================================================================
 .DS_Store
 Thumbs.db
+
+# ===================================================================
+# Unity (v2 GameTest track) — generated folders/files, NEVER commit.
+# Commit only: unity/<proj>/{Assets,Packages,ProjectSettings}/
+# ===================================================================
+unity/**/[Ll]ibrary/
+unity/**/[Tt]emp/
+unity/**/[Oo]bj/
+unity/**/[Bb]uild/
+unity/**/[Bb]uilds/
+unity/**/[Ll]ogs/
+unity/**/[Uu]serSettings/
+unity/**/[Mm]emoryCaptures/
+unity/**/*.csproj
+unity/**/*.sln
+unity/**/*.unityproj
+unity/**/*.user
+unity/**/*.pidb
+unity/**/*.booproj
+unity/**/*.svd
+unity/**/*.pdb
+unity/**/*.mdb
+unity/**/sysinfo.txt
