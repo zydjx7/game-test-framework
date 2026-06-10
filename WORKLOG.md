@@ -326,6 +326,18 @@
   scripts/run_unity_tests.py → negative FAIL check → commit/push. Hard PASS = CLI
   PASS/FAIL + door assert + debug_state.json, Editor closed. Progress is measured by
   Gate criteria, not time estimates.
+- [Codex] 2026-06-10 shared: Gate 0 complete (supersedes the Gate 0 TODO above)
+  - Added `DoorController`, `DebugStateExporter`, PlayMode `DoorSmokeTest`, and
+    `scripts/run_unity_tests.py`. The test constructs GameObjects programmatically;
+    no authored scene, FPS template, bridge, agent, LLM, or VLM was added.
+  - Verification: `python scripts\run_unity_tests.py` PASS; required negative check
+    was run by temporarily breaking the debug-state assertion and confirmed CLI
+    `FAIL` + nonzero exit; assertion restored and final PASS rerun.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest --basetemp .pytest_tmp\gate0-v1`:
+    117 passed, 4 deselected.
+  - Next code step is Gate 1: start a Gate 1 design doc, then build the
+    checkpoint-softlock fixture only after preserving Gate 0's live-smoke discipline.
+
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
   robustness sweep stays deferred.
