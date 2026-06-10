@@ -309,6 +309,14 @@
 
 ## Next Task
 
+- [Codex] 2026-06-10 shared: Gate 0 skeleton created + Unity CLI sanity smoke passed
+  - Unity editor for Gate 0: `E:\unity\2022.3.62f3c1\Editor\Unity.exe`
+    (2022.3 LTS). The older `E:\unity\2022.3.12f1\Editor\Unity.exe` was incomplete
+    on this machine: it lacked `Editor\Data\Resources\Licensing\Client\Unity.Licensing.Client.exe`
+    and batchmode aborted with licensing error 199. Do not use the old path for Gate 0.
+  - Created empty project at `unity/GameTestFixture/`; CLI sanity before any C# passed:
+    `Unity -batchmode -quit -projectPath F:\game-testing-main\unity\GameTestFixture -logFile -`.
+
 - Gate 0 — execute per `Doc/gate0-design.md`. PRECONDITION (human, GUI — agents
   cannot do this): install Unity Hub + one LTS editor (Unity 6 LTS or 2022.3 LTS),
   sign in once (license), then record the editor version + full Unity.exe path HERE
