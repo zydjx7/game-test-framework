@@ -181,10 +181,30 @@ Camera → RenderTexture → `Texture2D.EncodeToPNG`. Screenshot is best-effort 
 but becomes a **hard requirement by Gate 3** (the VLM gate needs real frames) — prove
 it works no later than Gate 2.
 
+## Post-Gate6 continuation
+
+Gates 0-6 completed the first vertical slice. The next forward-authoritative
+planning docs are:
+
+- `Doc/post-gate6-roadmap.md` - why the project should add a second bug class
+  before formal multi-agent orchestration, and the intended Gate 7-9 sequence.
+- `Doc/gate7-design.md` - Gate 7 presentation/state-visual mismatch bug.
+
+Post-Gate6 build order:
+
+| Gate | Deliverable | PASS criterion |
+|---|---|---|
+| **7** | Second bug class: presentation/state-visual mismatch (`debug_state` logic succeeds, rendered door state is wrong) | Fixed build PASS; `GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1` reports `presentation_mismatch` with `debug_state` + `visual_state` + screenshot + trace, then generated regression FAILS on bug build and PASSES on fixed build. |
+| **8** | Artifact/schema/tool-contract normalization | Common schemas for run results, bug reports, visual evidence, Test Plan IR, Regression Plan IR, and CLI tool results; Gates 0-7 remain green. |
+| **9** | Multi-agent orchestration MVP | LangGraph or equivalent orchestrates the existing tools and emits a final summary; CLI tools remain the only source of PASS/FAIL truth. |
+
+Do not start Gate 9 before Gate 7 and Gate 8 are complete. Do not treat Gate 7's
+bug toggle as a general mutation framework.
+
 ## Deferred — do NOT start before its gate
 
 coverage / mutation / CI dashboard; Spec-to-Test free C# generation (templates first);
-multi-agent orchestration; RAG; the full 7-class failure taxonomy (the v1 honest
+multi-agent orchestration before Gate 9; RAG; the full 7-class failure taxonomy (the v1 honest
 boundary — logic vs non-logic — holds until richer mechanics force the split); MCP
 server; Unreal. (Absorbs the old `Doc/v2-roadmap.md` extension ladder.)
 

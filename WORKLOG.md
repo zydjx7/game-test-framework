@@ -301,13 +301,12 @@
 
 ## Current In Progress
 
-- Gate 6 bug-to-regression loop is complete. Gates 0-6 now form the first
-  end-to-end vertical slice: generated/templated tests, Gameplay Agent bug
-  report, VLM supporting evidence, and a generated regression test that FAILS on
-  the injected bug build and PASSES on the fixed build. NEXT STEP = decide the
-  post-Gate6 plan/design before coding; do not start coverage, mutation
-  infrastructure, broader orchestration, or a new bug class without updating the
-  forward plan or adding a gate-specific design doc.
+- Post-Gate6 roadmap and Gate 7 design are now recorded. NEXT CODE STEP = Gate 7
+  implementation: presentation/state-visual mismatch via
+  `GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1`. Start with existing live smokes, then
+  add the smallest visual_state + report + generated regression path. Do not
+  start Gate 8 schema normalization or Gate 9 multi-agent orchestration until
+  Gate 7 is green.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -470,6 +469,18 @@
   - Next step is a post-Gate6 planning/design decision before coding. Do not
     start coverage, mutation infrastructure, broader multi-agent orchestration,
     or a second bug class as an implicit Gate 7.
+
+- [Codex] 2026-06-12 shared: post-Gate6 roadmap and Gate 7 design recorded
+  - Added `Doc/post-gate6-roadmap.md` and `Doc/gate7-design.md`; updated
+    `Doc/project-direction.md` to point to the Gate 7-9 continuation.
+  - Decision: do Gate 7 as a second bug class before formal multi-agent work.
+    The chosen bug is presentation/state-visual mismatch:
+    `GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1` makes logic succeed while the door
+    still appears visually closed. The verdict source must be
+    `debug_state + visual_state + trace`; VLM remains supporting evidence only.
+  - Planned sequence: Gate 7 second bug class -> Gate 8 artifact/schema/tool
+    contract normalization -> Gate 9 LangGraph-style multi-agent orchestration
+    MVP. Do not start Gate 9 before Gates 7-8 are green.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-

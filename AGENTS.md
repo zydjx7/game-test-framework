@@ -13,7 +13,8 @@ in order, then run the Start-of-Task Checklist:
 2. **`WORKLOG.md`** — `## Current In Progress` / `## Next Task` / `## Deferred`.
 3. **`Doc/project-direction.md`** — the authoritative GO-FORWARD direction
    (GameTest Agent System / Unity track): north star, Gates 0–5, hard rules,
-   reused-vs-new boundary. Read before any v2 decision.
+   reused-vs-new boundary. Read before any v2 decision. After Gate 6, also read
+   `Doc/post-gate6-roadmap.md` and the current gate design doc.
 4. **`Doc/research-plan.md`** — the ViZDoom-track master plan (Phases 0–3.5,
    **DONE**). Authoritative for the completed v1 design + invariants it records;
    **NOT** the forward direction (that is `project-direction.md`).
@@ -44,6 +45,8 @@ fixture + injected bug → 2 Python runtime bridge (no-LLM) → 3 Gameplay Agent
 `progression_softlock` → 4 Spec-to-Test (Test Plan IR + templates) → 5 VLM visual
 evidence → 6 bug→regression (generated regression test FAILS on the bug build,
 PASSES on the fixed one).
+After Gate 6, follow `Doc/post-gate6-roadmap.md`: Gate 7 second bug class ->
+Gate 8 artifact/schema/tool contracts -> Gate 9 multi-agent orchestration MVP.
 
 **End state (do not lose sight of it):** a dual-agent loop — Spec-to-Test
 (requirement → Test Plan IR → layered tests) + Gameplay QA Agent (goal-level
@@ -159,7 +162,7 @@ Two more shared surfaces, for things the three tiers above don't fit well:
 **Forward direction (2026-06-10 →): `Doc/project-direction.md`** is authoritative
 for where the project is GOING (GameTest Agent System / Unity track): north star,
 Gates 0–5, hard rules, reused-vs-new boundary. Read it before any v2 architectural
-decision.
+decision. After Gate 6, also read `Doc/post-gate6-roadmap.md`.
 
 `Doc/research-plan.md` is the ViZDoom-track master plan (Phases 0–3.5, **DONE**). It
 remains authoritative for the completed v1 design, module ownership, and invariants
