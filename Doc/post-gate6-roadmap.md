@@ -110,6 +110,51 @@ Minimum agents/nodes:
 Use LangGraph only for orchestration/state passing. Unity CLI and smoke scripts
 remain the oracle.
 
+Gate 9 must be a thin orchestrator:
+
+```text
+python scripts/orchestrate_gate9.py --scenario checkpoint_presentation
+```
+
+It should call existing tools that already passed Gates 0-8. It must not
+introduce new bug detection logic, new Unity mechanics, or a new oracle. If a new
+bug class is needed, that is a separate gate before orchestration.
+
+## Gate 8 schema criteria
+
+Gate 8 should make existing artifacts reliable and composable; it should not add
+new gameplay behavior.
+
+Minimum Done Criteria:
+
+1. Existing Gate 3/5/6/7 artifacts validate against schemas.
+2. Each schema has at least one golden fixture.
+3. `scripts/validate_gate_artifacts.py` validates the latest local artifacts and
+   prints PASS/FAIL.
+4. Fields used by only one gate start optional unless a later consumer requires
+   them.
+5. Schema normalization does not change behavior; Gates 0-7 remain green.
+
+Expected shape:
+
+```text
+schemas/
+  run_result.schema.json
+  bug_report.schema.json
+  visual_evidence.schema.json
+  test_plan_ir.schema.json
+  regression_plan_ir.schema.json
+  tool_result.schema.json
+
+tests/fixtures/artifacts/
+  gate3_progression_softlock_report.json
+  gate5_visual_evidence.json
+  gate6_regression_plan.json
+  gate7_presentation_mismatch_report.json
+
+scripts/validate_gate_artifacts.py
+```
+
 ## Guardrails
 
 - No coverage or mutation infrastructure before Gate 8. The Gate 1 and Gate 7
@@ -130,5 +175,9 @@ remain the oracle.
 - CI dashboard and trend reporting.
 - Broader mutation/evaluation matrix.
 - Additional game engines or MCP-as-runtime experiments.
+
+A lightweight Python-only CI can be considered after Gate 8 or during packaging:
+run the v1 pytest baseline and schema validators. Unity PlayMode CI can remain
+deferred until license/runner setup is worth the cost.
 
 These are valuable, but they need the Gate 7-9 foundation first.

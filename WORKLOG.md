@@ -482,6 +482,21 @@
     contract normalization -> Gate 9 LangGraph-style multi-agent orchestration
     MVP. Do not start Gate 9 before Gates 7-8 are green.
 
+- [Codex] 2026-06-12 shared: tighten post-Gate6 guardrails from GPT review
+  - Updated `Doc/project-direction.md` and `AGENTS.md` hard rules: no formal
+    multi-agent orchestration before Gates 7-8 are green; no coverage/mutation
+    infrastructure before Gate 8; gate toggles are controlled bug switches, not
+    a general mutation framework.
+  - Tightened `Doc/gate7-design.md`: `visual_state` must come from
+    DoorVisualController/Renderer/material/transform presentation state, not a
+    `debug_state` copy; Gate 7 bug smoke must report exactly
+    `presentation_mismatch` and never `progression_softlock`.
+  - Tightened `Doc/post-gate6-roadmap.md`: Gate 8 needs schema validation plus
+    golden fixtures, and Gate 9 must be a thin LangGraph-style orchestrator that
+    calls already-proven tools without adding new bug detection logic.
+  - CI note: lightweight Python-only CI is useful after Gate 8/packaging; Unity
+    PlayMode CI remains deferred until license/runner cost is worth it.
+
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
   robustness sweep stays deferred.

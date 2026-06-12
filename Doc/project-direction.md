@@ -223,9 +223,11 @@ Any "redesign" proposal must keep these three.
 1. **Never add a feature before the Unity live-smoke passes.**
 2. **Never claim a Unity change works without a PlayMode test or smoke script that
    prints PASS/FAIL.** "It should work" is not done.
-3. **No multi-agent orchestration before checkpoint softlock runs end-to-end (Gate 3).**
+3. **No formal multi-agent orchestration before Gate 7 and Gate 8 are green.**
+   Before Gate 9, use the existing scripts/tools directly.
 4. **VLM is visual evidence beside `debug_state`, never the sole oracle.**
-5. **No coverage / mutation before the first vertical slice (Gate 3) is stable.**
+5. **No coverage / mutation infrastructure before Gate 8.** Gate toggles are
+   controlled bug switches, not a general mutation framework.
 6. **Keep the ViZDoom v1 project GREEN and untouched** — reused Python core +
    portability proof.
 7. **The runtime bridge implements `Doc/adapter-contract.md`; editor MCP is authoring

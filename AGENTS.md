@@ -12,7 +12,8 @@ in order, then run the Start-of-Task Checklist:
 1. **This file (`AGENTS.md`)** — collaboration rules + decision-persistence.
 2. **`WORKLOG.md`** — `## Current In Progress` / `## Next Task` / `## Deferred`.
 3. **`Doc/project-direction.md`** — the authoritative GO-FORWARD direction
-   (GameTest Agent System / Unity track): north star, Gates 0–5, hard rules,
+   (GameTest Agent System / Unity track): north star, Gates 0-6 plus
+   post-Gate6 Gates 7-9, hard rules,
    reused-vs-new boundary. Read before any v2 decision. After Gate 6, also read
    `Doc/post-gate6-roadmap.md` and the current gate design doc.
 4. **`Doc/research-plan.md`** — the ViZDoom-track master plan (Phases 0–3.5,
@@ -58,9 +59,11 @@ toward that loop; Gate 0–2 plumbing is not the project itself.
 
 1. Never add a feature before the Unity live-smoke passes.
 2. Never claim a Unity change works without a PlayMode test / smoke PASS-FAIL.
-3. No multi-agent orchestration before checkpoint softlock runs end-to-end (Gate 3).
+3. No formal multi-agent orchestration before Gate 7 and Gate 8 are green.
+   Before Gate 9, use the existing scripts/tools directly.
 4. VLM is visual evidence beside `debug_state`, never the sole oracle.
-5. No coverage / mutation before the first vertical slice (Gate 3) is stable.
+5. No coverage / mutation infrastructure before Gate 8. Gate toggles are
+   controlled bug switches, not a general mutation framework.
 6. Keep the ViZDoom v1 project GREEN and untouched — reused Python core + the
    portability proof.
 7. The runtime bridge implements `Doc/adapter-contract.md`; editor MCP / automation
@@ -161,8 +164,9 @@ Two more shared surfaces, for things the three tiers above don't fit well:
 
 **Forward direction (2026-06-10 →): `Doc/project-direction.md`** is authoritative
 for where the project is GOING (GameTest Agent System / Unity track): north star,
-Gates 0–5, hard rules, reused-vs-new boundary. Read it before any v2 architectural
-decision. After Gate 6, also read `Doc/post-gate6-roadmap.md`.
+Gates 0-6 plus post-Gate6 Gates 7-9, hard rules, reused-vs-new boundary. Read it
+before any v2 architectural decision. After Gate 6, also read
+`Doc/post-gate6-roadmap.md`.
 
 `Doc/research-plan.md` is the ViZDoom-track master plan (Phases 0–3.5, **DONE**). It
 remains authoritative for the completed v1 design, module ownership, and invariants

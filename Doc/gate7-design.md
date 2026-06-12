@@ -63,7 +63,8 @@ All criteria are command-line verifiable with the Editor closed:
 4. Bug build with `GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1`:
    - reaches extraction;
    - keeps `progression_softlock == false`;
-   - reports `failure_type: presentation_mismatch`;
+   - reports exactly `failure_type: presentation_mismatch`;
+   - never reports `progression_softlock`;
    - includes screenshot, trace, debug_state, and visual_state evidence.
 5. VLM visual evidence is appended beside the report, not used as the verdict.
 6. A generated Gate 7 regression test is committed under
@@ -83,6 +84,32 @@ Add only the smallest runtime surface needed:
 - A visual-state exporter/bridge command, e.g. `visual_state`.
 - A door visual mismatch toggle that affects the rendered door state but not
   gameplay logic.
+
+`visual_state` must come from the presentation layer, not from a copy or
+inference of gameplay `debug_state`. Keep the sources separate:
+
+```text
+debug_state.door_open
+    comes from gameplay/passability/progression logic
+
+visual_state.door_visual_open
+    comes from DoorVisualController / Renderer / material / transform /
+    animation-visible state
+```
+
+Recommended component boundary:
+
+```text
+SecurityDoor / DoorLogicState
+    owns passability, door_open, extraction reachability
+
+DoorVisualController / DoorVisualState
+    owns mesh/material/color/transform/visible door state
+```
+
+`GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1` may affect only the visual component. It
+must not affect passability, extraction, checkpoint persistence, or
+`progression_softlock`.
 
 The fixture may keep using programmatic GameObjects and the existing fixed
 camera/RenderTexture screenshot path. Do not add authored scenes, FPS templates,
@@ -111,6 +138,19 @@ screenshot + debug_state + visual_state
 
 VLM may support the report, but it must not be the only thing that detects the
 bug.
+
+The Gate 7 smoke should explicitly guard against confusing this bug with Gate 1:
+
+```python
+assert report["failure_type"] == "presentation_mismatch"
+assert report["failure_type"] != "progression_softlock"
+assert report["debug_state"]["extraction_reached"] is True
+assert report["debug_state"]["progression_softlock"] is False
+assert report["visual_state"]["door_visual_open"] is False
+```
+
+The trace/evidence should make the distinction obvious: `open_door` succeeded,
+extraction was reached, and only the visible door state stayed closed.
 
 ## Suggested Report Shape
 
