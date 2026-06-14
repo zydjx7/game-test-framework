@@ -301,12 +301,9 @@
 
 ## Current In Progress
 
-- Post-Gate6 roadmap and Gate 7 design are now recorded. NEXT CODE STEP = Gate 7
-  implementation: presentation/state-visual mismatch via
-  `GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1`. Start with existing live smokes, then
-  add the smallest visual_state + report + generated regression path. Do not
-  start Gate 8 schema normalization or Gate 9 multi-agent orchestration until
-  Gate 7 is green.
+- Gate 7 implementation is complete. NEXT CODE STEP = Gate 8 design doc first:
+  artifact/schema/tool contract normalization with schema validation and golden
+  fixtures. Do not start Gate 9 multi-agent orchestration until Gate 8 is green.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -496,6 +493,31 @@
     calls already-proven tools without adding new bug detection logic.
   - CI note: lightweight Python-only CI is useful after Gate 8/packaging; Unity
     PlayMode CI remains deferred until license/runner cost is worth it.
+
+- [Codex] 2026-06-14 shared: Gate 7 presentation mismatch smoke complete
+  - Added a presentation-layer `DoorVisualController`, `CheckpointVisualState`,
+    bridge `visual_state` command, and `GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED=1`.
+    The bug makes gameplay succeed while the rendered door remains visually
+    closed.
+  - Added `scripts/presentation_bug_smoke.py`: it drives fixed and bug bridge
+    runs, validates exact `presentation_mismatch`, writes report/plan artifacts,
+    renders `GeneratedDoorVisualRegressionTest.cs`, then proves the generated
+    regression FAILS on the visual-bug build and PASSES on the fixed build.
+  - Decision: `visual_state` is exported from `DoorVisualController`/renderer
+    presentation state, not copied from `debug_state`. Gate 7 must never be
+    classified as `progression_softlock`; VLM-style visual evidence remains
+    supporting evidence only.
+  - Verification: `python scripts\presentation_bug_smoke.py` PASS;
+    `python scripts\run_unity_tests.py` PASS (6 PlayMode tests);
+    `python scripts\unity_smoke.py` PASS;
+    `python scripts\unity_agent_smoke.py` PASS;
+    `python scripts\bug_to_regression_smoke.py` PASS;
+    `python scripts\spec_to_test_smoke.py` PASS;
+    `python scripts\vlm_evidence_smoke.py` PASS.
+  - v1 portability baseline remains green with `.venv\Scripts\python.exe -m pytest
+    --basetemp .pytest_tmp\gate7-v1`: 117 passed, 4 deselected.
+  - Next code step is Gate 8 design doc first: normalize artifact schemas,
+    validation, golden fixtures, and tool contracts before Gate 9 orchestration.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-

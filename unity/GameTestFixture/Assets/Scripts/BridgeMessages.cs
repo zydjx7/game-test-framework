@@ -17,6 +17,7 @@ namespace GameTestFixture
         public string error;
         public CheckpointObservation observation;
         public CheckpointDebugState debug_state;
+        public CheckpointVisualState visual_state;
         public string screenshot_path;
         public string[] trace;
 

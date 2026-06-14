@@ -14,6 +14,7 @@ namespace GameTestFixture
         public bool extraction_reached;
         public bool progression_softlock;
         public bool bug_door_not_persisted;
+        public bool bug_door_visual_stuck_closed;
         public string failure_reason;
     }
 }

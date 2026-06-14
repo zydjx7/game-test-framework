@@ -135,6 +135,10 @@ namespace GameTestFixture
                     response = BridgeResponse.Success(command, fixture.Observe());
                     response.debug_state = fixture.ExportDebugState();
                     break;
+                case "visual_state":
+                    response = BridgeResponse.Success(command, fixture.Observe());
+                    response.visual_state = fixture.ExportVisualState();
+                    break;
                 case "screenshot":
                     response = BridgeResponse.Success(command, fixture.Observe());
                     response.screenshot_path = fixture.ExportScreenshot();

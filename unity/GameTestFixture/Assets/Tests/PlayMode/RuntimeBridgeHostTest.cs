@@ -14,6 +14,7 @@ namespace GameTestFixture.Tests
         private const string ReadyFileEnvVar = "GATE2_BRIDGE_READY_FILE";
         private const string TimeoutEnvVar = "GATE2_BRIDGE_TIMEOUT_SECONDS";
         private const string BugEnvVar = "GATE1_BUG_DOOR_NOT_PERSISTED";
+        private const string VisualBugEnvVar = "GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED";
 
         [UnityTest]
         [Category("Gate2Bridge")]
@@ -25,6 +26,7 @@ namespace GameTestFixture.Tests
             }
 
             bool doorNotPersistedBug = IsEnabled(BugEnvVar);
+            bool doorVisualStuckClosedBug = IsEnabled(VisualBugEnvVar);
             float timeoutSeconds = ReadTimeoutSeconds();
             string readyPath = ReadyFilePath();
             string readyDirectory = Path.GetDirectoryName(readyPath);
@@ -38,7 +40,7 @@ namespace GameTestFixture.Tests
                 File.Delete(readyPath);
             }
 
-            var fixture = new CheckpointRuntimeFixture(doorNotPersistedBug);
+            var fixture = new CheckpointRuntimeFixture(doorNotPersistedBug, doorVisualStuckClosedBug);
             RuntimeBridgeServer server = null;
             try
             {

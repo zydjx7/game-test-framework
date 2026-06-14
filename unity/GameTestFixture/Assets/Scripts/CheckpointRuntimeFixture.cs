@@ -8,6 +8,7 @@ namespace GameTestFixture
     public sealed class CheckpointRuntimeFixture : IDisposable
     {
         private readonly bool doorNotPersistedBug;
+        private readonly bool doorVisualStuckClosedBug;
         private readonly List<string> trace = new List<string>();
 
         private GameObject root;
@@ -18,15 +19,16 @@ namespace GameTestFixture
         private DeathRespawn respawn;
         private ExtractionPoint extraction;
         private Camera screenshotCamera;
-        private GameObject doorVisual;
+        private DoorVisualController doorVisual;
         private GameObject playerVisual;
         private bool extractionReached;
         private bool progressionSoftlock;
         private string failureReason = string.Empty;
 
-        public CheckpointRuntimeFixture(bool doorNotPersistedBug)
+        public CheckpointRuntimeFixture(bool doorNotPersistedBug, bool doorVisualStuckClosedBug = false)
         {
             this.doorNotPersistedBug = doorNotPersistedBug;
+            this.doorVisualStuckClosedBug = doorVisualStuckClosedBug;
         }
 
         public CheckpointObservation Reset()
@@ -122,6 +124,7 @@ namespace GameTestFixture
                 extraction_reached = extractionReached,
                 progression_softlock = progressionSoftlock,
                 bug_door_not_persisted = doorNotPersistedBug,
+                bug_door_visual_stuck_closed = doorVisualStuckClosedBug,
                 failure_reason = failureReason ?? string.Empty,
             };
         }
@@ -146,6 +149,20 @@ namespace GameTestFixture
             var snapshot = BuildDebugState();
             DebugStateExporter.Export(snapshot);
             trace.Add("debug_state");
+            return snapshot;
+        }
+
+        public CheckpointVisualState BuildVisualState()
+        {
+            EnsureReady();
+            UpdateScreenshotVisuals();
+            return CheckpointVisualState.FromDoorVisual(doorVisual, doorVisualStuckClosedBug);
+        }
+
+        public CheckpointVisualState ExportVisualState()
+        {
+            var snapshot = BuildVisualState();
+            trace.Add("visual_state");
             return snapshot;
         }
 
@@ -241,11 +258,12 @@ namespace GameTestFixture
             screenshotCamera.orthographic = true;
             screenshotCamera.orthographicSize = 4f;
 
-            doorVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            doorVisual.name = "DoorVisual";
-            doorVisual.transform.SetParent(root.transform);
-            doorVisual.transform.position = new Vector3(1.4f, 0.5f, 0f);
-            doorVisual.transform.localScale = new Vector3(0.35f, 1f, 0.2f);
+            var doorVisualObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            doorVisualObject.name = "DoorVisual";
+            doorVisualObject.transform.SetParent(root.transform);
+            doorVisualObject.transform.position = new Vector3(1.4f, 0.5f, 0f);
+            doorVisualObject.transform.localScale = new Vector3(0.35f, 1f, 0.2f);
+            doorVisual = doorVisualObject.AddComponent<DoorVisualController>();
 
             playerVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             playerVisual.name = "PlayerVisual";
@@ -259,7 +277,7 @@ namespace GameTestFixture
         {
             if (doorVisual != null)
             {
-                SetRendererColor(doorVisual, door != null && door.IsOpen ? Color.green : Color.red);
+                doorVisual.SyncFromDoor(door, doorVisualStuckClosedBug);
             }
 
             if (playerVisual != null)
