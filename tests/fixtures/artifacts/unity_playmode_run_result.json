@@ -1,0 +1,17 @@
+{
+  "runner": "Unity",
+  "test_platform": "PlayMode",
+  "test_category": null,
+  "result": "Passed",
+  "total": 6,
+  "passed": 6,
+  "failed": 0,
+  "skipped": 0,
+  "cases": [
+    {
+      "name": "GameTestFixture.Tests.Generated.GeneratedDoorVisualRegressionTest.OpenDoorVisualMatchesGameplayStateAfterCheckpointFlow",
+      "result": "Passed",
+      "message": ""
+    }
+  ]
+}

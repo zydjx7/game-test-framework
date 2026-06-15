@@ -1,0 +1,27 @@
+{
+  "plan_id": "gate7_door_visual_regression_plan",
+  "source_failure_type": "presentation_mismatch",
+  "source_goal": "Reach extraction and verify the opened door is visually open.",
+  "cases": [
+    {
+      "id": "door_visual_matches_open_logic_playmode",
+      "layer": "playmode",
+      "template": "door_visual_matches_open_logic_playmode",
+      "repro_actions": [
+        "move_to_keycard",
+        "collect_keycard",
+        "move_to_door",
+        "open_door",
+        "move_to_checkpoint",
+        "activate_checkpoint",
+        "move_to_hazard",
+        "die_and_respawn",
+        "extract"
+      ],
+      "assertions": [
+        "debug_state records door_open true",
+        "visual_state records door_visual_open true"
+      ]
+    }
+  ]
+}

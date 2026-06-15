@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Spec-to-Test plan IR",
+  "type": "object",
+  "required": [
+    "plan_id",
+    "cases"
+  ],
+  "properties": {
+    "plan_id": {
+      "type": "string"
+    },
+    "requirement_id": {
+      "type": "string"
+    },
+    "requirement": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "layer",
+          "template",
+          "assertions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "enum": [
+              "unit",
+              "component",
+              "integration",
+              "editmode",
+              "playmode",
+              "gameplay"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

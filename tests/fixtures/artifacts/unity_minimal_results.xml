@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run result="Passed" total="1" passed="1" failed="0" skipped="0">
+  <test-suite>
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-case fullname="Example.Test" result="Passed" />
+  </test-suite>
+</test-run>

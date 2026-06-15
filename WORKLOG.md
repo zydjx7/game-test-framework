@@ -301,9 +301,10 @@
 
 ## Current In Progress
 
-- Gate 7 implementation is complete. NEXT CODE STEP = Gate 8 design doc first:
-  artifact/schema/tool contract normalization with schema validation and golden
-  fixtures. Do not start Gate 9 multi-agent orchestration until Gate 8 is green.
+- Gate 8 implementation is complete. NEXT CODE STEP = Gate 9 design doc first:
+  a thin LangGraph-style orchestrator that calls existing tools and consumes the
+  Gate 8 artifact schemas. Do not add new bug detection logic, new Unity
+  mechanics, coverage, mutation infrastructure, or RAG in Gate 9.
 
 - Superseded historical note from before Gate 0 (do not treat as current):
   stand up a Unity **test-fixture skeleton** (empty/minimal 3D project) + ONE trivial
@@ -518,6 +519,34 @@
     --basetemp .pytest_tmp\gate7-v1`: 117 passed, 4 deselected.
   - Next code step is Gate 8 design doc first: normalize artifact schemas,
     validation, golden fixtures, and tool contracts before Gate 9 orchestration.
+
+- [Codex] 2026-06-15 shared: Gate 8 artifact/schema contracts complete
+  - Added `Doc/gate8-design.md`, `schemas/*.schema.json`, golden fixtures under
+    `tests/fixtures/artifacts/`, `scripts/validate_gate_artifacts.py`, and
+    focused validator tests. The validator uses only the Python standard library
+    because `jsonschema` is not installed in system Python or `.venv`.
+  - Gate 8 normalizes the current contracts for `run_result`, `bug_report`,
+    `visual_evidence`, `test_plan_ir`, `regression_plan_ir`, and `tool_result`.
+    It does not rename existing artifacts or change Unity behavior.
+  - Decision: schema validation is not a runtime verdict. Unity CLI and smoke
+    scripts remain the only PASS/FAIL source; schemas only make artifacts safe
+    for Gate 9 orchestration.
+  - Verification: `python scripts\validate_gate_artifacts.py` PASS (17 checks);
+    Gate 8 validator tests PASS (`tests\test_gate8_artifact_validator.py`,
+    basetemp `.pytest_tmp\gate8-validator2`);
+    `python scripts\run_unity_tests.py` PASS (6 PlayMode tests);
+    `python scripts\unity_smoke.py` PASS;
+    `python scripts\unity_agent_smoke.py` PASS;
+    `python scripts\spec_to_test_smoke.py` PASS;
+    `python scripts\vlm_evidence_smoke.py` PASS;
+    `python scripts\bug_to_regression_smoke.py` PASS;
+    `python scripts\presentation_bug_smoke.py` PASS.
+  - v1 portability baseline plus the new Gate 8 validator tests remain green
+    with `.venv\Scripts\python.exe -m pytest --basetemp .pytest_tmp\gate8-v1-full`:
+    121 passed, 4 deselected.
+  - Next code step is Gate 9 design doc first. The orchestrator should consume
+    these schemas and call existing tools; it must not become a new oracle or a
+    place to add new bug classes.
 
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-

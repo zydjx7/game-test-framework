@@ -1,0 +1,69 @@
+{
+  "status": "bug_reported",
+  "failure_type": "progression_softlock",
+  "goal": "Reach extraction after checkpoint respawn without a progression softlock.",
+  "steps": 6,
+  "cumulative": {
+    "extraction_reached_before": 0,
+    "extraction_reached_after": 0,
+    "progression_softlock_before": 0,
+    "progression_softlock_after": 1,
+    "steps": 6,
+    "last_action": "attempt_extraction"
+  },
+  "history": [
+    {
+      "step": 0,
+      "action": "collect_keycard",
+      "result": {
+        "keycard_collected_before": 0,
+        "keycard_collected_after": 1
+      }
+    },
+    {
+      "step": 5,
+      "action": "attempt_extraction",
+      "recovery": "retry",
+      "result": {
+        "extraction_reached_before": 0,
+        "extraction_reached_after": 0,
+        "progression_softlock_before": 1,
+        "progression_softlock_after": 1,
+        "failure_type": "progression_softlock"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "failure_type": "logic",
+      "recovery_action": "report",
+      "confidence": 1.0,
+      "recovered": false
+    }
+  ],
+  "bug_report": {
+    "goal": "Reach extraction after checkpoint respawn without a progression softlock.",
+    "suspected_logic": true,
+    "evidence": {
+      "reobserve_attempts": 1,
+      "retry_attempts": 1,
+      "budgets_exhausted": true
+    }
+  },
+  "debug_state": {
+    "door_open": false,
+    "extraction_reached": false,
+    "progression_softlock": true,
+    "bug_door_not_persisted": true,
+    "failure_reason": "progression_softlock: security door closed after checkpoint respawn"
+  },
+  "screenshot_path": "results/unity/bridge_screenshot.png",
+  "trace": [
+    "reset",
+    "action:open_door",
+    "action:die_and_respawn",
+    "action:extract",
+    "debug_state",
+    "screenshot"
+  ]
+}

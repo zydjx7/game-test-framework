@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Visual evidence bundle",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "verdict_source",
+    "visual_evidence_role",
+    "questions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source_report_path": {
+      "type": "string"
+    },
+    "screenshot_path": {
+      "type": "string"
+    },
+    "verdict_source": {
+      "type": "string"
+    },
+    "failure_type": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "progression_softlock",
+            "presentation_mismatch"
+          ]
+        }
+      ]
+    },
+    "visual_evidence_role": {
+      "type": "string",
+      "const": "supporting_evidence_only"
+    },
+    "backend": {
+      "type": "string"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "question_id",
+          "prompt",
+          "answer",
+          "confidence",
+          "rationale"
+        ],
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0
+          },
+          "backend": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

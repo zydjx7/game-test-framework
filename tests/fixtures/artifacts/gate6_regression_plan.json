@@ -1,0 +1,29 @@
+{
+  "plan_id": "gate6_checkpoint_softlock_regression_plan",
+  "source_report_path": "results/unity/gate6_source_agent_report.json",
+  "source_failure_type": "progression_softlock",
+  "source_goal": "Reach extraction after checkpoint respawn without a progression softlock.",
+  "cases": [
+    {
+      "id": "checkpoint_softlock_regression_playmode",
+      "layer": "playmode",
+      "title": "Checkpoint respawn must not softlock extraction",
+      "template": "checkpoint_softlock_regression_playmode",
+      "repro_actions": [
+        "move_to_keycard",
+        "collect_keycard",
+        "move_to_door",
+        "open_door",
+        "move_to_checkpoint",
+        "activate_checkpoint",
+        "move_to_hazard",
+        "die_and_respawn",
+        "extract"
+      ],
+      "assertions": [
+        "final observation reaches extraction",
+        "debug_state records progression_softlock false"
+      ]
+    }
+  ]
+}

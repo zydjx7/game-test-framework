@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unity or CLI run result",
+  "type": "object",
+  "required": [
+    "runner",
+    "result",
+    "total",
+    "passed",
+    "failed",
+    "skipped",
+    "cases"
+  ],
+  "properties": {
+    "runner": {
+      "type": "string"
+    },
+    "test_platform": {
+      "type": "string"
+    },
+    "test_category": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "Passed",
+        "Failed",
+        "Failed(Child)",
+        "Unknown"
+      ]
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "passed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skipped": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "result"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

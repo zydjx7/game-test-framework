@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "source_report_path": "results/unity/gate5_agent_report.json",
+  "screenshot_path": "results/unity/bridge_screenshot.png",
+  "verdict_source": "debug_state+trace+agent_report",
+  "failure_type": "progression_softlock",
+  "visual_evidence_role": "supporting_evidence_only",
+  "questions": [
+    {
+      "question_id": "door_blocks_extraction",
+      "prompt": "Is the extraction route blocked by a closed door?",
+      "answer": "yes",
+      "confidence": 0.95,
+      "backend": "fixture-vlm",
+      "rationale": "The debug context reports the security door closed after respawn."
+    }
+  ]
+}

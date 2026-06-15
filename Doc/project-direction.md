@@ -189,6 +189,7 @@ planning docs are:
 - `Doc/post-gate6-roadmap.md` - why the project should add a second bug class
   before formal multi-agent orchestration, and the intended Gate 7-9 sequence.
 - `Doc/gate7-design.md` - Gate 7 presentation/state-visual mismatch bug.
+- `Doc/gate8-design.md` - Gate 8 artifact/schema/tool-contract normalization.
 
 Post-Gate6 build order:
 

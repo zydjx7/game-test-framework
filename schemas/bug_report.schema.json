@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gameplay bug report",
+  "type": "object",
+  "required": [
+    "status",
+    "failure_type",
+    "goal",
+    "debug_state",
+    "screenshot_path",
+    "trace"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "bug_reported"
+      ]
+    },
+    "failure_type": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "progression_softlock",
+            "presentation_mismatch"
+          ]
+        }
+      ]
+    },
+    "goal": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "bug_toggle": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "cumulative": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "bug_report": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "final_observation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "debug_state": {
+      "type": "object",
+      "properties": {
+        "door_open": {
+          "type": "boolean"
+        },
+        "extraction_reached": {
+          "type": "boolean"
+        },
+        "progression_softlock": {
+          "type": "boolean"
+        },
+        "failure_reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "visual_state": {
+      "type": "object",
+      "properties": {
+        "door_visual_open": {
+          "type": "boolean"
+        },
+        "door_visual_color": {
+          "type": "string"
+        },
+        "door_visual_source": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "screenshot_path": {
+      "type": "string"
+    },
+    "trace": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visual_evidence": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

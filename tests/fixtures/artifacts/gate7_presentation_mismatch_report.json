@@ -1,0 +1,50 @@
+{
+  "status": "bug_reported",
+  "failure_type": "presentation_mismatch",
+  "goal": "Reach extraction and verify the opened door is visually open.",
+  "bug_toggle": "GATE7_BUG_DOOR_VISUAL_STUCK_CLOSED",
+  "final_observation": {
+    "door_open": true,
+    "extraction_reached": true,
+    "progression_softlock": false,
+    "bug_door_visual_stuck_closed": true
+  },
+  "debug_state": {
+    "door_open": true,
+    "extraction_reached": true,
+    "progression_softlock": false,
+    "bug_door_not_persisted": false,
+    "failure_reason": ""
+  },
+  "visual_state": {
+    "door_visual_open": false,
+    "door_visual_color": "closed_red",
+    "door_visual_source": "DoorVisualController.Renderer.material.color",
+    "bug_door_visual_stuck_closed": true
+  },
+  "screenshot_path": "results/unity/bridge_screenshot.png",
+  "trace": [
+    "reset",
+    "action:open_door",
+    "action:extract",
+    "debug_state",
+    "visual_state",
+    "screenshot"
+  ],
+  "visual_evidence": {
+    "schema_version": 1,
+    "verdict_source": "debug_state+visual_state+trace",
+    "visual_evidence_role": "supporting_evidence_only",
+    "backend": "fixture-vlm",
+    "screenshot_path": "results/unity/bridge_screenshot.png",
+    "questions": [
+      {
+        "question_id": "door_appears_open",
+        "prompt": "Does the security door visually appear open?",
+        "answer": "no",
+        "confidence": 0.95,
+        "rationale": "The presentation-layer visual_state reports the rendered door state."
+      }
+    ]
+  }
+}

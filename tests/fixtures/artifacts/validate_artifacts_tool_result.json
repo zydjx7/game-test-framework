@@ -1,0 +1,19 @@
+{
+  "tool": "validate_gate_artifacts",
+  "status": "success",
+  "exit_code": 0,
+  "checks": [
+    {
+      "artifact": "tests/fixtures/artifacts/gate3_progression_softlock_report.json",
+      "schema": "schemas/bug_report.schema.json",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "artifact": "tests/fixtures/artifacts/gate5_visual_evidence.json",
+      "schema": "schemas/visual_evidence.schema.json",
+      "status": "passed",
+      "message": ""
+    }
+  ]
+}
