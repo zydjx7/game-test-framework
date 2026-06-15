@@ -548,6 +548,23 @@
     these schemas and call existing tools; it must not become a new oracle or a
     place to add new bug classes.
 
+- [Codex] 2026-06-15 shared: record PR collaboration and dual-remote push policy
+  - Updated `AGENTS.md` for the new human-collaboration workflow: Issue first,
+    branch from latest protected branch, one small task per PR, review before
+    merge, and no direct pushes to protected `master` / `main`.
+  - Added the new collaboration repository remote policy:
+    `agent-system=https://github.com/zydjx7/game-test-agent-system.git`. Future
+    review branches should be represented in both `origin` and `agent-system`
+    when a task is intended for both repositories.
+  - Important: the new collaboration repo currently has a different git history
+    from `origin/master` (clean import on `agent-system/main`). Do not push an
+    `origin/master`-based branch to `agent-system` as if it were PR-ready;
+    apply an equivalent patch on a branch based on `agent-system/main` instead.
+  - Gate 9 guardrail is repeated in the workflow: orchestrator only, no new bug
+    class, Unity mechanics, coverage/mutation, RAG, or new verdict logic.
+  - Note: local `gh` is installed but not authenticated in this workspace, so
+    Issue/PR creation may need the user or an authenticated GitHub CLI session.
+
 - Carry-over (v1, DO NOT block v2): 1b ammo-bounds/death maturity is superseded as a
   priority by the pivot; revisit only if a v1 demo specifically needs it. Budget-
   robustness sweep stays deferred.

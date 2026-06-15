@@ -77,20 +77,79 @@ toward that loop; Gate 0–2 plumbing is not the project itself.
 - Codex works in the main worktree at `F:\game-testing-main`.
 - Do not edit another agent's active worktree or tool metadata.
 
+## GitHub Collaboration Workflow
+
+This project is now developed with a human collaborator through pull requests.
+Do not bypass this workflow, including as Codex/Claude.
+
+Protected branches:
+
+- Original repo: `origin` = `https://github.com/zydjx7/game-test-framework.git`,
+  protected branch `master`.
+- Collaboration repo: `agent-system` =
+  `https://github.com/zydjx7/game-test-agent-system.git`, protected branch
+  `main`.
+
+Rules:
+
+1. Do not push directly to `master` / `main`.
+2. Open or claim a GitHub Issue before implementation. If the CLI is not
+   authenticated, stop after pushing the branch and tell the user the Issue/PR
+   must be opened in GitHub.
+3. Branch from the latest protected branch. Prefer small, descriptive branch
+   names such as `feat/...`, `fix/...`, or `docs/...`.
+4. One PR should contain one small task.
+5. PR descriptions must state what changed, why it changed, and how it was
+   verified. Include command-line PASS/FAIL output summaries.
+6. Unity-related changes still require command-line smoke / PlayMode PASS/FAIL.
+7. Gate 9 is orchestration only: do not add a new bug class, Unity mechanic,
+   coverage/mutation infrastructure, RAG, or new verdict logic.
+8. Do not commit `.env`, debug/results/logs, Unity `Library/` / `Temp/` / `Obj/`,
+   IDE state, or personal notes.
+9. If behavior or workflow changes, update the relevant docs in the same PR.
+10. Merge only after review.
+
+Dual-repository rule: when a task should land in both repositories, both
+repositories need a review branch. Prefer the same branch name, but respect each
+repository's protected-branch history.
+
+The current repositories were initialized with different histories. Do **not**
+push an `origin/master`-based branch to `agent-system` if it would create an
+unrelated-history PR against `agent-system/main`. In that case, apply the
+equivalent patch on a branch based on `agent-system/main`, then open/review PRs
+in both repositories.
+
+For same-history branches, push to both repositories:
+
+```powershell
+git push origin <branch>
+git push agent-system <branch>
+```
+
+If `agent-system` is missing, add it:
+
+```powershell
+git remote add agent-system https://github.com/zydjx7/game-test-agent-system.git
+```
+
 ## Start-of-Task Checklist
 
 Run this before starting any new task:
 
 ```powershell
 git fetch origin
+git fetch agent-system
 git log --oneline HEAD..origin/master
 git log --oneline origin/master..HEAD
 Get-Content WORKLOG.md | Select-Object -Last 10
 ```
 
-- If `origin/master` is ahead, rebase before starting work.
-- If the current branch has unpushed commits, push or explicitly preserve them
-  before starting unrelated work.
+- If `agent-system` is not configured yet, add it before starting branch work.
+- If `origin/master` is ahead, rebase before starting work. If the collaboration
+  repo's `main` has diverged in a way that affects this task, inspect it before
+  editing shared surfaces.
+- If the current branch has unpushed commits, push the branch to the appropriate
+  review remote(s) or explicitly preserve it before starting unrelated work.
 - If another agent recently touched a shared file, inspect that change before
   editing the same surface.
 
@@ -101,7 +160,8 @@ After finishing a task:
 1. Run the relevant verification commands.
 2. Append a concise entry to `WORKLOG.md`.
 3. Commit the task.
-4. Push immediately.
+4. Push the task branch to both remotes.
+5. Open a PR for review; do not merge it yourself unless explicitly authorized.
 
 `WORKLOG.md` is a human-readable summary, while Git history remains the source of
 truth for exact commit hashes. For an entry created in the same commit as the work,
@@ -203,7 +263,8 @@ Treat these as shared coordination surfaces:
 - `WORKLOG.md`
 
 Any commit that changes one of these files must use the prefix `shared:` in the
-commit subject and should be pushed immediately after verification.
+commit subject and should be pushed to a review branch immediately after
+verification.
 
 ## Conflict Discipline
 
